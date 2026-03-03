@@ -5,496 +5,118 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Task Manager</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        h1 {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
-            font-size: 2.5rem;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .controls {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        }
-
-        .control-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-
-        .control-row:last-child {
-            margin-bottom: 0;
-        }
-
-        input, select, textarea {
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: border-color 0.3s, box-shadow 0.3s;
-        }
-
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-        }
-
-        input[type="text"], input[type="date"] {
-            flex: 1;
-            min-width: 150px;
-        }
-
-        textarea {
-            width: 100%;
-            min-height: 60px;
-            resize: vertical;
-        }
-
-        select {
-            min-width: 120px;
-        }
-
-        button {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-
-        button:active {
-            transform: translateY(0);
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
-            color: white;
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #51cf66 0%, #40c057 100%);
-            color: white;
-        }
-
-        .filter-section {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        }
-
-        .filter-section h3 {
-            margin-bottom: 15px;
-            color: #333;
-        }
-
-        .tasks-container {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        }
-
-        .tasks-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .tasks-header h2 {
-            color: #333;
-        }
-
-        .task-count {
-            background: #667eea;
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-        }
-
-        .task-list {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .task-item {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            border-left: 4px solid #667eea;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .task-item:hover {
-            transform: translateX(5px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .task-item.priority-high {
-            border-left-color: #ff6b6b;
-        }
-
-        .task-item.priority-medium {
-            border-left-color: #ffa94d;
-        }
-
-        .task-item.priority-low {
-            border-left-color: #51cf66;
-        }
-
-        .task-item.status-completed {
-            opacity: 0.7;
-            background: #e8f5e9;
-        }
-
-        .task-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 10px;
-        }
-
-        .task-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #333;
-            text-decoration: none;
-        }
-
-        .task-item.status-completed .task-title {
-            text-decoration: line-through;
-            color: #888;
-        }
-
-        .task-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .task-actions button {
-            padding: 6px 12px;
-            font-size: 12px;
-        }
-
-        .task-description {
-            color: #666;
-            margin-bottom: 10px;
-            line-height: 1.5;
-        }
-
-        .task-meta {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            font-size: 13px;
-            color: #888;
-        }
-
-        .task-meta span {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .tag {
-            background: #667eea;
-            color: white;
-            padding: 3px 10px;
-            border-radius: 15px;
-            font-size: 12px;
-        }
-
-        .status-badge {
-            padding: 3px 10px;
-            border-radius: 15px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .status-in-progress {
-            background: #cce5ff;
-            color: #004085;
-        }
-
-        .status-completed {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #888;
-        }
-
-        .empty-state svg {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 20px;
-            opacity: 0.5;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .modal-header h2 {
-            color: #333;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #888;
-            padding: 0;
-        }
-
-        .close-btn:hover {
-            color: #333;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-            color: #333;
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-        }
-
-        .tags-input-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            padding: 8px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            min-height: 44px;
-        }
-
-        .tags-input-container:focus-within {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-        }
-
-        .tag-input {
-            border: none;
-            outline: none;
-            flex: 1;
-            min-width: 100px;
-            padding: 4px;
-        }
-
-        .tag-chip {
-            background: #667eea;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 15px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .tag-chip button {
-            background: none;
-            border: none;
-            color: white;
-            cursor: pointer;
-            padding: 0;
-            font-size: 14px;
-            line-height: 1;
-        }
-
-        .error-message {
-            background: #ffe0e0;
-            color: #c00;
-            padding: 10px 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            display: none;
-        }
-
-        .error-message.visible {
-            display: block;
-        }
-
-        .success-message {
-            background: #e0ffe0;
-            color: #060;
-            padding: 10px 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            display: none;
-        }
-
-        .success-message.visible {
-            display: block;
-        }
-
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; color: #fff; margin-bottom: 30px; font-size: 2.5rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+        h2, h3 { color: #333; }
+        
+        .controls, .filter-section, .tasks-container { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .control-row { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .control-row:last-child { margin-bottom: 0; }
+        
+        input, select, textarea { padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: border-color 0.3s, box-shadow 0.3s; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.2); }
+        input[type="text"], input[type="date"] { flex: 1; min-width: 150px; }
+        textarea { width: 100%; min-height: 60px; resize: vertical; }
+        select { min-width: 120px; }
+        
+        button { padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        button:active { transform: translateY(0); }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+        .btn-secondary { background: #f0f0f0; color: #333; }
+        .btn-danger { background: linear-gradient(135deg, #ff6b6b, #ee5a5a); color: #fff; }
+        .btn-success { background: linear-gradient(135deg, #51cf66, #40c057); color: #fff; }
+        
+        .tasks-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .task-count { background: #667eea; color: #fff; padding: 5px 15px; border-radius: 20px; font-size: 14px; }
+        .task-list { display: flex; flex-direction: column; gap: 15px; }
+        
+        .task-item { background: #f8f9fa; border-radius: 10px; padding: 20px; border-left: 4px solid #667eea; transition: transform 0.2s, box-shadow 0.2s; }
+        .task-item:hover { transform: translateX(5px); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .task-item.priority-high { border-left-color: #ff6b6b; }
+        .task-item.priority-medium { border-left-color: #ffa94d; }
+        .task-item.priority-low { border-left-color: #51cf66; }
+        .task-item.status-completed { opacity: 0.7; background: #e8f5e9; }
+        
+        .task-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .task-title { font-size: 18px; font-weight: 600; color: #333; }
+        .task-item.status-completed .task-title { text-decoration: line-through; color: #888; }
+        .task-actions { display: flex; gap: 8px; }
+        .task-actions button { padding: 6px 12px; font-size: 12px; }
+        .task-description { color: #666; margin-bottom: 10px; line-height: 1.5; }
+        .task-meta { display: flex; gap: 15px; flex-wrap: wrap; font-size: 13px; color: #888; }
+        
+        .tag, .status-badge { padding: 3px 10px; border-radius: 15px; font-size: 12px; }
+        .tag { background: #667eea; color: #fff; }
+        .status-badge { font-weight: 500; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-in-progress { background: #cce5ff; color: #004085; }
+        .status-completed { background: #d4edda; color: #155724; }
+        
+        .empty-state { text-align: center; padding: 60px 20px; color: #888; }
+        .empty-state svg { width: 80px; height: 80px; margin-bottom: 20px; opacity: 0.5; }
+        
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: #fff; border-radius: 12px; padding: 30px; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #888; padding: 0; }
+        .close-btn:hover { color: #333; transform: none; box-shadow: none; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; color: #333; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; }
+        
+        .tags-input-container { display: flex; flex-wrap: wrap; gap: 5px; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px; min-height: 44px; }
+        .tags-input-container:focus-within { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.2); }
+        .tag-input { border: none; outline: none; flex: 1; min-width: 100px; padding: 4px; }
+        .tag-chip { background: #667eea; color: #fff; padding: 4px 8px; border-radius: 15px; font-size: 12px; display: flex; align-items: center; gap: 5px; }
+        .tag-chip button { background: none; border: none; color: #fff; cursor: pointer; padding: 0; font-size: 14px; line-height: 1; }
+        
+        .error-message, .success-message { padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; display: none; }
+        .error-message { background: #ffe0e0; color: #c00; }
+        .success-message { background: #e0ffe0; color: #060; }
+        .error-message.visible, .success-message.visible { display: block; }
+        
         @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-            }
-
-            input, select {
-                width: 100%;
-            }
-
-            .task-header {
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            .task-actions {
-                align-self: flex-start;
-            }
+            .control-row { flex-direction: column; }
+            input, select { width: 100%; }
+            .task-header { flex-direction: column; gap: 10px; }
+            .task-actions { align-self: flex-start; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📋 Task Manager</h1>
-
-        <!-- Add Task Section -->
         <div class="controls">
             <div id="successMessage" class="success-message"></div>
             <div id="errorMessage" class="error-message"></div>
-            
             <div class="control-row">
                 <input type="text" id="searchInput" placeholder="Search tasks...">
-                <button class="btn-primary" onclick="TaskManager.openAddModal()">+ Add New Task</button>
+                <button class="btn-primary" onclick="TaskManager.openModal()">+ Add New Task</button>
             </div>
         </div>
-
-        <!-- Filter Section -->
         <div class="filter-section">
             <h3>🔍 Filter Tasks</h3>
             <div class="control-row">
-                <select id="filterStatus">
-                    <option value="">All Statuses</option>
-                    <option value="pending">Pending</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="completed">Completed</option>
-                </select>
-                <select id="filterPriority">
-                    <option value="">All Priorities</option>
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                </select>
+                <select id="filterStatus"><option value="">All Statuses</option><option value="pending">Pending</option><option value="in-progress">In Progress</option><option value="completed">Completed</option></select>
+                <select id="filterPriority"><option value="">All Priorities</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
                 <input type="date" id="filterDueDate" placeholder="Filter by due date">
                 <input type="text" id="filterTags" placeholder="Filter by tag...">
                 <button class="btn-secondary" onclick="TaskManager.clearFilters()">Clear Filters</button>
             </div>
         </div>
-
-        <!-- Tasks List -->
         <div class="tasks-container">
             <div class="tasks-header">
                 <h2>Tasks</h2>
                 <span class="task-count" id="taskCount">0 tasks</span>
             </div>
-            <div class="task-list" id="taskList">
-                <!-- Tasks will be rendered here -->
-            </div>
+            <div class="task-list" id="taskList"></div>
         </div>
     </div>
-
-    <!-- Add/Edit Task Modal -->
     <div class="modal" id="taskModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -502,58 +124,18 @@
                 <button class="close-btn" onclick="TaskManager.closeModal()">&times;</button>
             </div>
             <div id="modalError" class="error-message"></div>
-            
             <form id="taskForm" onsubmit="return TaskManager.handleSubmit(event)">
                 <input type="hidden" id="taskId">
-                
-                <div class="form-group">
-                    <label for="taskTitle">Title *</label>
-                    <input type="text" id="taskTitle" required placeholder="Enter task title">
-                </div>
-
-                <div class="form-group">
-                    <label for="taskDescription">Description</label>
-                    <textarea id="taskDescription" placeholder="Enter task description"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="taskStatus">Status</label>
-                    <select id="taskStatus">
-                        <option value="pending">Pending</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="taskPriority">Priority</label>
-                    <select id="taskPriority">
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="taskDueDate">Due Date</label>
-                    <input type="date" id="taskDueDate">
-                </div>
-
-                <div class="form-group">
-                    <label>Tags</label>
-                    <div class="tags-input-container" id="tagsContainer">
-                        <input type="text" class="tag-input" id="tagInput" placeholder="Type and press Enter to add tags">
-                    </div>
-                </div>
-
-                <div class="control-row">
-                    <button type="submit" class="btn-success" id="submitBtn">Add Task</button>
-                    <button type="button" class="btn-secondary" onclick="TaskManager.closeModal()">Cancel</button>
-                </div>
+                <div class="form-group"><label for="taskTitle">Title *</label><input type="text" id="taskTitle" required placeholder="Enter task title"></div>
+                <div class="form-group"><label for="taskDescription">Description</label><textarea id="taskDescription" placeholder="Enter task description"></textarea></div>
+                <div class="form-group"><label for="taskStatus">Status</label><select id="taskStatus"><option value="pending">Pending</option><option value="in-progress">In Progress</option><option value="completed">Completed</option></select></div>
+                <div class="form-group"><label for="taskPriority">Priority</label><select id="taskPriority"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
+                <div class="form-group"><label for="taskDueDate">Due Date</label><input type="date" id="taskDueDate"></div>
+                <div class="form-group"><label>Tags</label><div class="tags-input-container" id="tagsContainer"><input type="text" class="tag-input" id="tagInput" placeholder="Type and press Enter to add tags"></div></div>
+                <div class="control-row"><button type="submit" class="btn-success" id="submitBtn">Add Task</button><button type="button" class="btn-secondary" onclick="TaskManager.closeModal()">Cancel</button></div>
             </form>
         </div>
     </div>
-
     <script src="task-manager.js"></script>
 </body>
 </html>
