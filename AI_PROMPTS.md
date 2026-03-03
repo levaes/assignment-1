@@ -167,3 +167,53 @@ Refactor index.html and task-manager.js to be as concise as possible while keepi
 ---
 
 *Refactoring completed 2026-03-03*
+
+---
+
+## Prompt 5: Adding Educational Comments
+
+**Context:** User requested adding clear comments to every function and important code section in task-manager.js so a beginner can understand what each part does. Comments should be in English.
+
+**Prompt:**
+```
+Add clear comments to every function and important code section in task-manager.js so a beginner can understand what each part does. Keep comments in English.
+```
+
+**Changes Made:**
+
+### task-manager.js (~4,500 → ~12,000 chars with comments)
+
+Added comprehensive documentation including:
+
+| Section | Description |
+|---------|-------------|
+| File header | Explains the app uses localStorage for browser persistence |
+| Constants (lines 6-25) | Documents STORAGE_KEY, STATUS, PRIORITY, FORMAT, and validation helpers |
+| Storage Service (lines 45-52) | Explains how localStorage works for saving/loading tasks |
+| Task Factory (lines 55-67) | Documents how new tasks are created with unique IDs and defaults |
+| TaskManager methods | Each method has detailed comments: |
+| - `init()` | App initialization and startup |
+| - `bindEvents()` | Setting up interactive elements |
+| - `debounce()` | Delaying search to improve performance |
+| - `addTag()` / `removeTag()` / `renderTags()` | Tag management in forms |
+| - `openModal()` / `closeModal()` | Popup/dialog management |
+| - `handleSubmit()` | Form processing and validation |
+| - `toggleStatus()` | Cycling task status (pending→in-progress→completed) |
+| - `deleteTask()` | Task removal with confirmation dialog |
+| - `clearFilters()` | Resetting all filter inputs |
+| - `getFiltered()` | Filtering and sorting logic |
+| - `render()` | Displaying tasks in HTML |
+| - `esc()` / `msg()` / `err()` / `showModalError()` | Utility functions |
+| - `commands` | CLI-style API for programmatic access |
+
+**Why These Changes Work:**
+
+1. **Beginner-Friendly:** Every function and code section now has clear explanations in simple English
+2. **Preserved Functionality:** All existing features work exactly as before
+3. **Educational Value:** Comments explain not just what code does, but why it exists (e.g., debouncing for performance, escaping for security)
+4. **Maintainability:** Future developers can understand the codebase quickly
+5. **Self-Documenting:** The code now serves as its own documentation
+
+---
+
+*Documentation completed 2026-03-03*
