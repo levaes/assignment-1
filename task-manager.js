@@ -89,14 +89,30 @@ const Storage = {
     // Load all tasks from localStorage
     // Returns an empty array if no tasks exist yet
     // JSON.parse converts the stored string back into a JavaScript array
-    get: async () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'),
+    get: async () => {
+        try {
+            const data = localStorage.getItem(STORAGE_KEY);
+            console.log('[Storage] get() - raw data:', data ? data.substring(0, 100) + '...' : 'null/empty');
+            return JSON.parse(data || '[]');
+        } catch (e) {
+            console.error('[Storage] get() error:', e);
+            return [];
+        }
+    },
     
     // Save all tasks to localStorage
     // JSON.stringify converts the JavaScript array into a string for storage
     // Throws errors if storage is full or save fails
     save: async (tasks) => {
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
-        catch (e) { throw e.name === 'QuotaExceededError' ? Error('Storage full') : Error('Save failed'); }
+        console.log('[Storage] save() - tasks count:', tasks.length);
+        try { 
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); 
+            console.log('[Storage] save() - success');
+        }
+        catch (e) { 
+            console.error('[Storage] save() error:', e);
+            throw e.name === 'QuotaExceededError' ? Error('Storage full') : Error('Save failed'); 
+        }
     }
 };
 
@@ -157,14 +173,22 @@ const TaskManager = {
     // Called when the page loads - sets up the app
     
     async init() {
-        // Load tasks from localStorage into memory
-        this.tasks = await Storage.get();
-        
-        // Display the tasks on the page
-        this.render();
-        
-        // Set up event listeners for user interactions
-        this.bindEvents();
+        console.log('[TaskManager] Initializing...');
+        try {
+            // Load tasks from localStorage into memory
+            this.tasks = await Storage.get();
+            console.log('[TaskManager] Loaded tasks:', this.tasks.length);
+            
+            // Display the tasks on the page
+            this.render();
+            console.log('[TaskManager] Render complete');
+            
+            // Set up event listeners for user interactions
+            this.bindEvents();
+            console.log('[TaskManager] Events bound successfully');
+        } catch (e) {
+            console.error('[TaskManager] Init error:', e);
+        }
     },
 
     // ============================================================================
@@ -174,8 +198,17 @@ const TaskManager = {
     // This makes the app interactive
     
     bindEvents() {
+        console.log('[TaskManager] Binding events...');
         // Helper function to add event listener if element exists
-        const on = (id, e, fn) => document.getElementById(id)?.addEventListener(e, fn);
+        const on = (id, e, fn) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener(e, fn);
+                console.log(`[TaskManager] Bound ${e} on #${id}`);
+            } else {
+                console.warn(`[TaskManager] WARNING: Element #${id} not found for event binding`);
+            }
+        };
         
         // Search input - filters tasks as user types (with 300ms delay/debounce)
         on('searchInput', 'input', this.debounce(() => this.render(), 300));
@@ -341,7 +374,10 @@ const TaskManager = {
         const errors = [V.title(data.title), V.desc(data.description), V.status(data.status), V.priority(data.priority), V.date(data.dueDate)].filter(Boolean);
         
         // If there are errors, show the first one and stop
-        if (errors.length) return this.showModalError(errors[0]);
+        if (errors.length) {
+            this.showModalError(errors[0]);
+            return false;
+        }
 
         try {
             // Check if we're editing an existing task or adding a new one
@@ -445,7 +481,7 @@ const TaskManager = {
         const q = get('searchInput').toLowerCase().trim();
         
         // Filter by search query - checks title, description, and tags
-        if (q) f = f.filter(t => t.title.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.tags.some(t => t.includes(q)));
+        if (q) f = f.filter(task => task.title.toLowerCase().includes(q) || task.description.toLowerCase().includes(q) || task.tags.some(tag => tag.includes(q)));
         
         // Filter by status dropdown
         if (get('filterStatus')) f = f.filter(t => t.status === get('filterStatus'));
@@ -457,14 +493,16 @@ const TaskManager = {
         if (get('filterDueDate')) f = f.filter(t => t.dueDate === get('filterDueDate'));
         
         // Filter by tag (searches in tags array)
-        if (get('filterTags')) f = f.filter(t => t.tags.some(t => t.includes(get('filterTags').toLowerCase())));
+        if (get('filterTags')) f = f.filter(task => task.tags.some(tag => tag.includes(get('filterTags').toLowerCase())));
 
         // Sort tasks: 
         // 1. Completed tasks go to the bottom
         // 2. Within same status, sort by priority (high first)
         // 3. Within same priority, sort by due date (earliest first)
         f.sort((a, b) => {
-            if (a.status === STATUS.COMPLETED !== (b.status === STATUS.COMPLETED)) return (a.status === STATUS.COMPLETED) - (b.status === STATUS.COMPLETED);
+            const aCompleted = a.status === STATUS.COMPLETED;
+            const bCompleted = b.status === STATUS.COMPLETED;
+            if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
             return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority] || (a.dueDate && b.dueDate ? new Date(a.dueDate) - new Date(b.dueDate) : !!b.dueDate - !!a.dueDate);
         });
         
@@ -477,9 +515,14 @@ const TaskManager = {
     // Display the filtered/sorted tasks in the HTML
     
     render() {
+        console.log('[TaskManager] Rendering tasks...');
         // Get the task list container and task count element
         const list = document.getElementById('taskList'), count = document.getElementById('taskCount');
         
+        if (!list || !count) {
+            console.error('[TaskManager] ERROR: taskList or taskCount element not found!');
+            return;
+        }
         // Get filtered tasks
         const f = this.getFiltered();
         
@@ -498,9 +541,9 @@ const TaskManager = {
                 <div class="task-header">
                     <span class="task-title">${this.esc(t.title)}</span>
                     <div class="task-actions">
-                        <button class="btn-success" onclick="TaskManager.toggleStatus('${t.id}')">${t.status === STATUS.COMPLETED ? '↩️' : '✓'}</button>
-                        <button class="btn-primary" onclick="TaskManager.openModal(TaskManager.tasks.find(t => t.id === '${t.id}'))">✏️</button>
-                        <button class="btn-danger" onclick="TaskManager.deleteTask('${t.id}')">🗑️</button>
+                        <button class="btn-success" onclick="TaskManager.toggleStatus('${this.esc(t.id)}')">${t.status === STATUS.COMPLETED ? '↩️' : '✓'}</button>
+                        <button class="btn-primary" onclick="TaskManager.openModal(TaskManager.tasks.find(task => task.id === '${this.esc(t.id)}'))">✏️</button>
+                        <button class="btn-danger" onclick="TaskManager.deleteTask('${this.esc(t.id)}')">🗑️</button>
                     </div>
                 </div>
                 ${t.description ? `<p class="task-description">${this.esc(t.description)}</p>` : ''}
