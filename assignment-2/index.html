@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager - TypeScript</title>
+    <!-- Google Fonts - Nunito for rounded, bubbly typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================
+           CSS RESET & BASE STYLES
+           ============================================ */
+        *, *::before, *::after { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+        }
+
+        body { 
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif; 
+            background: linear-gradient(135deg, #E8D5E8 0%, #F5E6D3 50%, #E8E5D5 100%); 
+            min-height: 100vh; 
+            padding: 20px; 
+        }
+        
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+        }
+
+        h1 { 
+            text-align: center; 
+            color: #6B5B6B; 
+            margin-bottom: 30px; 
+            font-size: 2.5rem; 
+            text-shadow: 2px 2px 4px rgba(107, 91, 107, 0.15); 
+        }
+        
+        h2, h3 { 
+            color: #5B4B5B; 
+        }
+
+        /* ============================================
+           CARD STYLES
+           ============================================ */
+        .controls, .filter-section, .tasks-container, .stats-section, .category-section { 
+            background: #FFFDF9; 
+            border-radius: 20px; 
+            padding: 25px; 
+            margin-bottom: 20px; 
+            box-shadow: 0 8px 30px rgba(180, 160, 180, 0.15); 
+        }
+
+        .control-row { 
+            display: flex; 
+            gap: 12px; 
+            margin-bottom: 15px; 
+            flex-wrap: wrap; 
+        }
+        .control-row:last-child { 
+            margin-bottom: 0; 
+        }
+
+        /* ============================================
+           FORM ELEMENTS
+           ============================================ */
+        input, select, textarea { 
+            padding: 14px 18px; 
+            border: 2px solid #D8D0D8; 
+            border-radius: 12px; 
+            font-size: 14px; 
+            font-family: 'Nunito', sans-serif;
+            transition: border-color 0.3s, box-shadow 0.3s; 
+            background: #FFFDF9;
+            color: #4A3A4A; 
+        }
+        
+        input:focus, select:focus, textarea:focus { 
+            outline: none; 
+            border-color: #B4A4B4; 
+            box-shadow: 0 0 0 4px rgba(180, 160, 180, 0.2); 
+        }
+        
+        input::placeholder {
+            color: #A090A0;
+        }
+        
+        input[type="text"], input[type="date"] { 
+            flex: 1; 
+            min-width: 150px; 
+        }
+        
+        textarea { 
+            width: 100%; 
+            min-height: 60px; 
+            resize: vertical; 
+        }
+        
+        select { 
+            min-width: 120px; 
+        }
+
+        /* ============================================
+           BUTTONS
+           ============================================ */
+        button { 
+            padding: 14px 28px; 
+            border: none; 
+            border-radius: 12px; 
+            font-size: 14px; 
+            font-weight: 600; 
+            font-family: 'Nunito', sans-serif;
+            cursor: pointer; 
+            transition: transform 0.2s, box-shadow 0.2s; 
+        }
+        
+        button:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 6px 20px rgba(180, 160, 180, 0.25); 
+        }
+        
+        button:active { 
+            transform: translateY(0); 
+        }
+
+        .btn-primary { 
+            background: linear-gradient(135deg, #D8C0D8, #E8D0E0); 
+            color: #5B4B5B; 
+        }
+        
+        .btn-secondary { 
+            background: #F0E8E0; 
+            color: #5B4B5B; 
+        }
+        
+        .btn-danger { 
+            background: linear-gradient(135deg, #E8C8C8, #F0D0D0); 
+            color: #A06060; 
+        }
+        
+        .btn-success { 
+            background: linear-gradient(135deg, #C8E8D8, #D8E8D8); 
+            color: #5B7A6B; 
+        }
+
+        .btn-sm {
+            padding: 8px 14px;
+            font-size: 12px;
+        }
+
+        /* ============================================
+           TASKS SECTION
+           ============================================ */
+        .tasks-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 20px; 
+        }
+        
+        .task-count { 
+            background: linear-gradient(135deg, #D8C8D8, #E8D8E8); 
+            color: #5B4B5B; 
+            padding: 8px 18px; 
+            border-radius: 25px; 
+            font-size: 14px; 
+            font-weight: 600;
+        }
+        
+        .task-list { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; 
+        }
+
+        .task-item { 
+            background: #FFFDF9; 
+            border-radius: 16px; 
+            padding: 22px; 
+            border-left: 5px solid #B4A4B4; 
+            transition: transform 0.2s, box-shadow 0.2s; 
+        }
+        
+        .task-item:hover { 
+            transform: translateX(5px); 
+            box-shadow: 0 6px 25px rgba(180, 160, 180, 0.15); 
+        }
+
+        .task-item.priority-high { 
+            border-left-color: #D8B4B4; 
+        }
+        .task-item.priority-medium { 
+            border-left-color: #D8C8B4; 
+        }
+        .task-item.priority-low { 
+            border-left-color: #B4C8B4; 
+        }
+
+        .task-item.status-completed { 
+            opacity: 0.75; 
+            background: #F8F6F4; 
+        }
+
+        .task-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-start; 
+            margin-bottom: 12px; 
+        }
+        
+        .task-title { 
+            font-size: 18px; 
+            font-weight: 600; 
+            color: #4A3A4A; 
+        }
+        
+        .task-title.blocked {
+            opacity: 0.7;
+        }
+        
+        .task-item.status-completed .task-title { 
+            text-decoration: line-through; 
+            color: #8A7A8A; 
+        }
+        
+        .task-actions { 
+            display: flex; 
+            gap: 8px; 
+        }
+        
+        .task-actions button { 
+            padding: 8px 14px; 
+            font-size: 12px; 
+        }
+        
+        .task-description { 
+            color: #7A6A7A; 
+            margin-bottom: 12px; 
+            line-height: 1.6; 
+        }
+        
+        .task-meta { 
+            display: flex; 
+            gap: 15px; 
+            flex-wrap: wrap; 
+            font-size: 13px; 
+            color: #807080; 
+        }
+
+        .block-badge {
+            background: #E8DCC8;
+            color: #807060;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+
+        /* ============================================
+           TAGS & BADGES
+           ============================================ */
+        .tag, .status-badge, .category-badge { 
+            padding: 4px 12px; 
+            border-radius: 20px; 
+            font-size: 12px; 
+            font-weight: 600;
+        }
+        
+        .tag { 
+            background: #D8C8D8; 
+            color: #5B4B5B; 
+        }
+        
+        .category-badge {
+            color: #FFF;
+        }
+        
+        .status-badge { 
+            font-weight: 600; 
+        }
+
+        .status-pending { 
+            background: #E8DCC8; 
+            color: #807060; 
+        }
+        .status-in-progress { 
+            background: #D0D8E0; 
+            color: #506070; 
+        }
+        .status-completed { 
+            background: #D0E0D8; 
+            color: #607060; 
+        }
+
+        /* ============================================
+           EMPTY STATE
+           ============================================ */
+        .empty-state { 
+            text-align: center; 
+            padding: 60px 20px; 
+            color: #807080; 
+        }
+        .empty-state svg { 
+            width: 80px; 
+            height: 80px; 
+            margin-bottom: 20px; 
+            opacity: 0.4; 
+        }
+
+        /* ============================================
+           MODALS
+           ============================================ */
+        .modal { 
+            display: none; 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(160, 140, 160, 0.35); 
+            backdrop-filter: blur(4px);
+            z-index: 1000; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        .modal.active { 
+            display: flex; 
+        }
+        .modal-content { 
+            background: #FFFDF9; 
+            border-radius: 20px; 
+            padding: 30px; 
+            width: 90%; 
+            max-width: 550px; 
+            max-height: 90vh; 
+            overflow-y: auto; 
+            box-shadow: 0 20px 60px rgba(160, 140, 160, 0.35);
+        }
+        .modal-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 20px; 
+        }
+        .close-btn { 
+            background: none; 
+            border: none; 
+            font-size: 28px; 
+            cursor: pointer; 
+            color: #8A7A8A; 
+            padding: 0; 
+            line-height: 1; 
+        }
+        .close-btn:hover { 
+            color: #5B4B5B; 
+            transform: none; 
+            box-shadow: none; 
+        }
+
+        /* ============================================
+           FORM GROUPS
+           ============================================ */
+        .form-group { 
+            margin-bottom: 18px; 
+        }
+        .form-group label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: 600; 
+            color: #5B4B5B; 
+        }
+        .form-group input, .form-group select, .form-group textarea { 
+            width: 100%; 
+        }
+
+        /* ============================================
+           TAGS INPUT
+           ============================================ */
+        .tags-input-container { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 6px; 
+            padding: 10px; 
+            border: 2px solid #D8D0D8; 
+            border-radius: 12px; 
+            min-height: 48px; 
+            background: #FFFDF9;
+        }
+        .tags-input-container:focus-within { 
+            border-color: #B4A4B4; 
+            box-shadow: 0 0 0 4px rgba(180, 160, 180, 0.2); 
+        }
+        .tag-input { 
+            border: none; 
+            outline: none; 
+            flex: 1; 
+            min-width: 100px; 
+            padding: 6px; 
+            font-size: 14px;
+            background: transparent;
+        }
+        
+        .tag-chip { 
+            background: #D8C8D8; 
+            color: #5B4B5B; 
+            padding: 6px 10px; 
+            border-radius: 20px; 
+            font-size: 12px; 
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+        }
+        .tag-chip button { 
+            background: none; 
+            border: none; 
+            color: #5B4B5B; 
+            cursor: pointer; 
+            padding: 0; 
+            font-size: 16px; 
+            line-height: 1; 
+            opacity: 0.7;
+        }
+        .tag-chip button:hover { 
+            opacity: 1; 
+        }
+
+        /* ============================================
+           CHECKBOX GROUPS
+           ============================================ */
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 10px;
+            border: 2px solid #D8D0D8;
+            border-radius: 12px;
+        }
+        
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #4A3A4A;
+        }
+        
+        .checkbox-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* ============================================
+           FEEDBACK MESSAGES
+           ============================================ */
+        .error-message, .success-message { 
+            padding: 12px 18px; 
+            border-radius: 12px; 
+            margin-bottom: 15px; 
+            display: none; 
+            font-weight: 600;
+        }
+        .error-message { 
+            background: #E8D8D8; 
+            color: #A06060; 
+        }
+        .success-message { 
+            background: #D8E8D8; 
+            color: #607060; 
+        }
+        .error-message.visible, .success-message.visible { 
+            display: block; 
+        }
+
+        /* ============================================
+           STATISTICS SECTION
+           ============================================ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #F0E8F0, #F8F0F8);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border-left: 4px solid #B4A4B4;
+        }
+        
+        .stat-card.pending {
+            border-left-color: #D8C8B4;
+        }
+        
+        .stat-card.in-progress {
+            border-left-color: #B4C4D8;
+        }
+        
+        .stat-card.completed {
+            border-left-color: #B4D8B4;
+        }
+        
+        .stat-card.overdue {
+            border-left-color: #D8B4B4;
+        }
+        
+        .stat-card.upcoming {
+            border-left-color: #D8D4B4;
+        }
+        
+        .stat-card.rate {
+            border-left-color: #B4D8D8;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #5B4B5B;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #807080;
+            margin-top: 4px;
+        }
+
+        /* ============================================
+           CATEGORY SECTION
+           ============================================ */
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .category-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .category-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 15px;
+            background: #F8F4F8;
+            border-radius: 10px;
+            border-left: 4px solid #B4A4B4;
+        }
+        
+        .category-name {
+            font-weight: 600;
+            color: #5B4B5B;
+        }
+        
+        .category-priority {
+            font-size: 12px;
+            color: #807080;
+            margin-left: 10px;
+        }
+
+        /* ============================================
+           RECURRING SECTION
+           ============================================ */
+        .recurring-section {
+            background: #F4F0F4;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .recurring-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .recurring-row select, 
+        .recurring-row input {
+            flex: 1;
+            min-width: 100px;
+        }
+
+        /* ============================================
+           RESPONSIVE
+           ============================================ */
+        @media (max-width: 768px) {
+            .control-row { 
+                flex-direction: column; 
+            }
+            input, select { 
+                width: 100%; 
+            }
+            .task-header { 
+                flex-direction: column; 
+                gap: 12px; 
+            }
+            .task-actions { 
+                align-self: flex-start; 
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Page Title -->
+        <h1>📋 Task Manager <small style="font-size: 0.5em; color: #8A7A8A;">TypeScript Edition</small></h1>
+        
+        <!-- Success/Error Messages -->
+        <div id="successMessage" class="success-message"></div>
+        <div id="errorMessage" class="error-message"></div>
+        
+        <!-- ============================================
+             CONTROLS SECTION
+             ============================================ -->
+        <div class="controls">
+            <div class="control-row">
+                <input type="text" id="searchInput" placeholder="Search tasks...">
+                <button class="btn-primary" onclick="taskManager.openModal()">+ Add New Task</button>
+                <button class="btn-secondary" onclick="taskManager.openCategoryModal()">📁 Categories</button>
+            </div>
+        </div>
+        
+        <!-- ============================================
+             STATISTICS SECTION (NEW)
+             ============================================ -->
+        <div class="stats-section">
+            <h3>📊 Statistics</h3>
+            <div id="statsPanel" class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Total</div>
+                </div>
+                <div class="stat-card pending">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                <div class="stat-card in-progress">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+                <div class="stat-card completed">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+                <div class="stat-card overdue">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Overdue</div>
+                </div>
+                <div class="stat-card upcoming">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Due Soon</div>
+                </div>
+                <div class="stat-card rate">
+                    <div class="stat-value">0%</div>
+                    <div class="stat-label">Completion Rate</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ============================================
+             FILTER SECTION
+             ============================================ -->
+        <div class="filter-section">
+            <h3>🔍 Filter Tasks</h3>
+            <div class="control-row">
+                <select id="filterStatus">
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                </select>
+                <select id="filterPriority">
+                    <option value="">All Priorities</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+                <select id="filterCategory">
+                    <option value="">All Categories</option>
+                </select>
+                <input type="date" id="filterDueDate" placeholder="Filter by due date">
+                <input type="text" id="filterTags" placeholder="Filter by tag...">
+            </div>
+            <div class="control-row">
+                <select id="sortField">
+                    <option value="createdAt">Sort by Date</option>
+                    <option value="title">Sort by Title</option>
+                    <option value="priority">Sort by Priority</option>
+                    <option value="status">Sort by Status</option>
+                    <option value="dueDate">Sort by Due Date</option>
+                </select>
+                <select id="sortDirection">
+                    <option value="desc">Descending</option>
+                    <option value="asc">Ascending</option>
+                </select>
+                <button class="btn-secondary" onclick="taskManager.clearFilters()">Clear Filters</button>
+            </div>
+        </div>
+        
+        <!-- ============================================
+             TASKS CONTAINER
+             ============================================ -->
+        <div class="tasks-container">
+            <div class="tasks-header">
+                <h2>Tasks</h2>
+                <span class="task-count" id="taskCount">0 tasks</span>
+            </div>
+            <div class="task-list" id="taskList"></div>
+        </div>
+    </div>
+    
+    <!-- ============================================
+         TASK MODAL
+         ============================================ -->
+    <div class="modal" id="taskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Task</h2>
+                <button class="close-btn" onclick="taskManager.closeModal()">&times;</button>
+            </div>
+            <div id="modalError" class="error-message"></div>
+            <form id="taskForm" onsubmit="return taskManager.handleSubmit(event)">
+                <input type="hidden" id="taskId">
+                
+                <!-- Task Title -->
+                <div class="form-group">
+                    <label for="taskTitle">Title *</label>
+                    <input type="text" id="taskTitle" required placeholder="Enter task title">
+                </div>
+                
+                <!-- Task Description -->
+                <div class="form-group">
+                    <label for="taskDescription">Description</label>
+                    <textarea id="taskDescription" placeholder="Enter task description"></textarea>
+                </div>
+                
+                <!-- Status & Priority -->
+                <div class="control-row">
+                    <div class="form-group" style="flex:1">
+                        <label for="taskStatus">Status</label>
+                        <select id="taskStatus">
+                            <option value="pending">Pending</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1">
+                        <label for="taskPriority">Priority</label>
+                        <select id="taskPriority">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Due Date -->
+                <div class="form-group">
+                    <label for="taskDueDate">Due Date</label>
+                    <input type="date" id="taskDueDate">
+                </div>
+                
+                <!-- Category (NEW) -->
+                <div class="form-group">
+                    <label for="taskCategory">Category</label>
+                    <select id="taskCategory">
+                        <option value="">No Category</option>
+                    </select>
+                </div>
+                
+                <!-- Tags -->
+                <div class="form-group">
+                    <label>Tags</label>
+                    <div class="tags-input-container" id="tagsContainer">
+                        <input type="text" class="tag-input" id="tagInput" placeholder="Type and press Enter to add tags">
+                    </div>
+                </div>
+                
+                <!-- Dependencies (NEW) -->
+                <div class="form-group">
+                    <label>Depends On (blockers)</label>
+                    <div class="checkbox-group" id="dependencyList">
+                        <p style="color: #807080; font-size: 12px;">No other tasks available</p>
+                    </div>
+                </div>
+                
+                <!-- Recurring (NEW) -->
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="recurringEnabled" style="width: auto;"> 
+                        Make this a recurring task
+                    </label>
+                    <div class="recurring-section" id="recurringOptions" style="display: none;">
+                        <div class="recurring-row">
+                            <select id="recurringFrequency">
+                                <option value="daily">Daily</option>
+                                <option value="weekly" selected>Weekly</option>
+                                <option value="biweekly">Bi-weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                            <input type="number" id="recurringInterval" value="1" min="1" max="52" placeholder="Every X">
+                            <span style="color: #807080; font-size: 14px;">time(s)</span>
+                        </div>
+                        <div class="recurring-row" style="margin-top: 10px;">
+                            <label style="font-size: 14px; color: #5B4B5B;">End after:</label>
+                            <input type="date" id="recurringEndDate">
+                            <span style="color: #807080; font-size: 14px;">(optional)</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Form Actions -->
+                <div class="control-row">
+                    <button type="submit" class="btn-success" id="submitBtn">Add Task</button>
+                    <button type="button" class="btn-secondary" onclick="taskManager.closeModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- ============================================
+         CATEGORY MODAL (NEW)
+         ============================================ -->
+    <div class="modal" id="categoryModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="categoryModalTitle">Add Category</h2>
+                <button class="close-btn" onclick="taskManager.closeCategoryModal()">&times;</button>
+            </div>
+            <form id="categoryForm" onsubmit="return taskManager.handleCategorySubmit(event)">
+                <input type="hidden" id="categoryId">
+                
+                <div class="form-group">
+                    <label for="categoryName">Category Name *</label>
+                    <input type="text" id="categoryName" required placeholder="Enter category name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="categoryColor">Color</label>
+                    <input type="color" id="categoryColor" value="#B4A4B4">
+                </div>
+                
+                <div class="form-group">
+                    <label for="categoryDescription">Description</label>
+                    <textarea id="categoryDescription" placeholder="Optional description"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="categoryPriority">Associated Priority</label>
+                    <select id="categoryPriority">
+                        <option value="">Any Priority</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+                
+                <div class="control-row">
+                    <button type="submit" class="btn-success">Save Category</button>
+                    <button type="button" class="btn-secondary" onclick="taskManager.closeCategoryModal()">Cancel</button>
+                </div>
+            </form>
+            
+            <hr style="border: none; border-top: 1px solid #D8D0D8; margin: 20px 0;">
+            
+            <div class="category-header">
+                <h3>Existing Categories</h3>
+            </div>
+            <div class="category-list" id="categoryList"></div>
+        </div>
+    </div>
+    
+    <!-- ============================================
+         JAVASCRIPT - Compiled from TypeScript
+         ============================================ -->
+    <script type="module">
+        // Import the compiled TaskManager from dist/
+        import { taskManager } from './dist/taskManager.js';
+        
+        // Make available globally for onclick handlers
+        window.taskManager = taskManager;
+    </script>
+</body>
+</html>

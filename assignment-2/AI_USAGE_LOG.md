@@ -154,3 +154,31 @@ assignment-2/
 ## Conclusion
 
 The TypeScript migration was successful. All features from Assignment 1 were preserved, and all new features (recurring tasks, dependencies, statistics, search, sorting, category-priority relationships) were implemented. The code compiles successfully with strict TypeScript settings.
+
+---
+
+## Additional Work
+
+### index.html (Assignment 2)
+- **Created**: New index.html file in assignment-2/ folder
+- **Features**:
+  - Uses compiled JavaScript from dist/ folder via ES6 modules
+  - Full UI from Assignment 1 preserved (task form, filters, task list)
+  - **Statistics Panel**: Added showing total, pending, in-progress, completed, overdue, due soon, completion rate
+  - **Categories**: Added category management modal with name, color, description, priority
+  - **Task Dependencies**: Added dependency selection in task form with blocker indicator
+  - **Recurring Tasks**: Added recurring task configuration (frequency, interval, end date)
+  - **Sorting**: Added sort by field and direction controls
+  - **Category Filter**: Added dropdown to filter by category
+- **Script Loading**: Uses `<script type="module">` with import from './dist/taskManager.js'
+- **Status**: ✅ COMPLETED
+
+---
+
+## Files Updated
+
+```
+assignment-2/
+├── index.html              # NEW - Main HTML using TypeScript compiled JS
+└── AI_USAGE_LOG.md        # Updated - Added this entry
+```
