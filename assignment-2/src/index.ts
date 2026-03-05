@@ -1,15 +1,15 @@
 // ============================================================================
 // INDEX - Main Entry Point
+// Re-exports all modules for easy importing
 // ============================================================================
 
-// Export all modules
-export * from './types';
-export * from './utils';
-export * from './storage';
-export * from './taskManager';
+// Re-export everything from other modules
+export * from './types';      // TypeScript type definitions
+export * from './utils';       // Utility functions
+export * from './storage';     // Storage services
+export * from './taskManager'; // Main application
 
 // Import and initialize the application
 import { taskManager } from './taskManager';
 
-// The application will auto-initialize when DOM is ready
-// This is handled in taskManager.ts
+// App auto-initializes when DOM is ready (see taskManager.ts)

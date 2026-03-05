@@ -1,18 +1,24 @@
 // ============================================================================
-// GENERIC UTILITY FUNCTIONS
-// At least 3 generic utility functions as required
+// UTILITIES - Reusable helper functions for common operations
+// These functions solve everyday programming problems
 // ============================================================================
 
 import { Result, TaskStatus, TaskPriority } from './types';
 
+// ============================================================================
+// DEBOUNCE - Delays function execution until user stops calling it
+// Use case: Search input - don't filter on every keystroke, wait until user stops typing
+// ============================================================================
+
 /**
- * UTILITY 1: Generic Debounce Function
- * Delays function execution until user stops calling it
- * Useful for search inputs - prevents filtering on every keystroke
+ * Debounce - Waits for the user to stop calling a function before executing it
+ * @param fn - The function to debounce
+ * @param ms - Milliseconds to wait (default 300ms = 0.3 seconds)
+ * @returns A new function that only runs after the delay
  * 
- * @param fn - Function to debounce
- * @param ms - Milliseconds to delay
- * @returns Debounced function
+ * Example: debounce(() => save(), 500) 
+ * - User types "hello" quickly
+ * - Function only runs once, 500ms after user stops typing
  */
 export function debounce<T extends (...args: unknown[]) => unknown>(
     fn: T,
@@ -21,9 +27,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
     let timerId: ReturnType<typeof setTimeout> | null = null;
     
     return function(this: unknown, ...args: Parameters<T>) {
-        if (timerId) {
-            clearTimeout(timerId);
-        }
+        if (timerId) clearTimeout(timerId);  // Cancel previous timer
         timerId = setTimeout(() => {
             fn.apply(this, args);
             timerId = null;
@@ -31,68 +35,62 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
     };
 }
 
-/**
- * UTILITY 2: Generic Deep Clone Function
- * Creates a deep copy of an object
- * 
- * @param obj - Object to clone
- * @returns Deep cloned object
- */
-export function deepClone<T>(obj: T): T {
-    if (obj === null || typeof obj !== 'object') {
-        return obj;
-    }
-    
-    if (obj instanceof Date) {
-        return new Date(obj.getTime()) as unknown as T;
-    }
-    
-    if (obj instanceof Array) {
-        return obj.map(item => deepClone(item)) as unknown as T;
-    }
-    
-    if (obj instanceof Object) {
-        const clonedObj = {} as T;
-        for (const key in obj) {
-            if (Object.prototype.hasOwnProperty.call(obj, key)) {
-                clonedObj[key] = deepClone(obj[key]);
-            }
-        }
-        return clonedObj;
-    }
-    
-    return obj;
-}
+// ============================================================================
+// DEEP CLONE - Creates a complete copy of an object (not just reference)
+// Use case: When you need to modify an object without affecting the original
+// ============================================================================
 
 /**
- * UTILITY 3: Generic Filter Function
- * Filters array by multiple criteria
+ * Deep Clone - Creates a complete copy of any object
+ * Why "deep"? Because it copies nested objects too, not just the top level
+ * @param obj - Object to copy
+ * @returns A completely new object with same values
  * 
+ * Example: const copy = deepClone(original)
+ * - Modifying copy.original won't affect original
+ */
+export function deepClone<T>(obj: T): T {
+    if (obj === null || typeof obj !== 'object') return obj;  // Primitives don't need cloning
+    
+    if (obj instanceof Date) return new Date(obj.getTime()) as unknown as T;
+    if (obj instanceof Array) return obj.map(item => deepClone(item)) as unknown as T;
+    
+    // For objects, recursively clone each property
+    const clonedObj = {} as T;
+    for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            clonedObj[key] = deepClone(obj[key]);
+        }
+    }
+    return clonedObj;
+}
+
+// ============================================================================
+// FILTER BY - Filter array with custom predicate
+// ============================================================================
+
+/**
+ * Filter array items by a custom condition
  * @param items - Array to filter
- * @param predicate - Filter predicate
+ * @param predicate - Function that returns true for items to keep
  * @returns Filtered array
  */
-export function filterBy<T>(
-    items: T[],
-    predicate: (item: T, index: number) => boolean
-): T[] {
+export function filterBy<T>(items: T[], predicate: (item: T, index: number) => boolean): T[] {
     return items.filter(predicate);
 }
 
+// ============================================================================
+// SORT BY - Sort array by a specific field
+// ============================================================================
+
 /**
- * UTILITY 4: Generic Sort Function
- * Sorts array by specified field and direction
- * 
+ * Sort array by a specific property
  * @param items - Array to sort
- * @param field - Field to sort by
- * @param direction - Sort direction (asc/desc)
- * @returns Sorted array
+ * @param field - Property name to sort by
+ * @param direction - 'asc' (A-Z) or 'desc' (Z-A)
+ * @returns New sorted array (doesn't modify original)
  */
-export function sortBy<T>(
-    items: T[],
-    field: keyof T,
-    direction: 'asc' | 'desc' = 'asc'
-): T[] {
+export function sortBy<T>(items: T[], field: keyof T, direction: 'asc' | 'desc' = 'asc'): T[] {
     const sorted = [...items].sort((a, b) => {
         const aVal = a[field];
         const bVal = b[field];
@@ -108,80 +106,63 @@ export function sortBy<T>(
     return sorted;
 }
 
+// ============================================================================
+// GROUP BY - Group array items by a key
+// ============================================================================
+
 /**
- * UTILITY 5: Generic Group By Function
- * Groups array items by a key selector
- * 
+ * Group items by a specific property (e.g., group tasks by priority)
  * @param items - Array to group
- * @param keySelector - Function to extract group key
- * @returns Grouped object
+ * @param keySelector - Function that returns the grouping key
+ * @returns Object with keys as group names and arrays as values
  */
-export function groupBy<T, K extends string | number>(
-    items: T[],
-    keySelector: (item: T) => K
-): Record<K, T[]> {
+export function groupBy<T, K extends string | number>(items: T[], keySelector: (item: T) => K): Record<K, T[]> {
     return items.reduce((result, item) => {
         const key = keySelector(item);
-        if (!result[key]) {
-            result[key] = [];
-        }
+        if (!result[key]) result[key] = [];
         result[key].push(item);
         return result;
     }, {} as Record<K, T[]>);
 }
 
+// ============================================================================
+// UNIQUE BY - Get unique items based on a key
+// ============================================================================
+
 /**
- * UTILITY 6: Generic Unique Function
- * Returns unique items based on a key selector
- * 
- * @param items - Array to get unique items from
- * @param keySelector - Function to extract unique key
- * @returns Array of unique items
+ * Remove duplicate items from array based on a property
+ * @param items - Array to process
+ * @param keySelector - Function that returns the unique key
+ * @returns Array with duplicates removed
  */
-export function uniqueBy<T, K>(
-    items: T[],
-    keySelector: (item: T) => K
-): T[] {
+export function uniqueBy<T, K>(items: T[], keySelector: (item: T) => K): T[] {
     const seen = new Set<K>();
     return items.filter(item => {
         const key = keySelector(item);
-        if (seen.has(key)) {
-            return false;
-        }
+        if (seen.has(key)) return false;
         seen.add(key);
         return true;
     });
 }
 
+// ============================================================================
+// PAGINATE - Split array into pages
+// ============================================================================
+
 /**
- * UTILITY 7: Generic Paginate Function
- * Paginates array by page number and page size
- * 
+ * Split array into pages for pagination UI
  * @param items - Array to paginate
- * @param page - Page number (1-indexed)
- * @param pageSize - Items per page
- * @returns Paginated result with metadata
+ * @param page - Page number (1 = first page)
+ * @param pageSize - Number of items per page
+ * @returns Object with page data and metadata
  */
-export function paginate<T>(
-    items: T[],
-    page: number,
-    pageSize: number
-): {
-    data: T[];
-    total: number;
-    page: number;
-    pageSize: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-} {
+export function paginate<T>(items: T[], page: number, pageSize: number) {
     const total = items.length;
     const totalPages = Math.ceil(total / pageSize);
     const startIndex = (page - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
     
     return {
-        data: items.slice(startIndex, endIndex),
+        data: items.slice(startIndex, startIndex + pageSize),
         total,
         page,
         pageSize,
@@ -191,20 +172,18 @@ export function paginate<T>(
     };
 }
 
+// ============================================================================
+// RETRY - Retry a failing operation
+// ============================================================================
+
 /**
- * UTILITY 8: Generic Retry Function
- * Retries a promise-based function on failure
- * 
- * @param fn - Async function to retry
- * @param maxAttempts - Maximum retry attempts
- * @param delay - Delay between attempts in ms
- * @returns Result of the function
+ * Retry an async operation if it fails (useful for network requests)
+ * @param fn - Async function to try
+ * @param maxAttempts - How many times to try (default 3)
+ * @param delay - MS to wait between attempts (default 1000ms)
+ * @returns Result with data or error
  */
-export async function retry<T>(
-    fn: () => Promise<T>,
-    maxAttempts: number = 3,
-    delay: number = 1000
-): Promise<Result<T, Error>> {
+export async function retry<T>(fn: () => Promise<T>, maxAttempts: number = 3, delay: number = 1000): Promise<Result<T, Error>> {
     let lastError: Error;
     
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -213,34 +192,32 @@ export async function retry<T>(
             return { success: true, data };
         } catch (error) {
             lastError = error instanceof Error ? error : new Error(String(error));
-            
-            if (attempt < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, delay * attempt));
-            }
+            if (attempt < maxAttempts) await new Promise(r => setTimeout(r, delay * attempt));
         }
     }
     
     return { success: false, error: lastError! };
 }
 
+// ============================================================================
+// MEMOIZE - Cache function results
+// ============================================================================
+
 /**
- * UTILITY 9: Generic Cache Function
- * Creates a memoized version of a function
- * 
+ * Memoization - Cache function results so expensive operations don't repeat
  * @param fn - Function to cache
- * @returns Cached function
+ * @returns Cached version of the function
+ * 
+ * Example: const cachedGet = memoize(expensiveApiCall)
+ * - First call: runs the function, stores result
+ * - Second call with same args: returns cached result instantly
  */
-export function memoize<T extends (...args: unknown[]) => unknown>(
-    fn: T
-): T {
+export function memoize<T extends (...args: unknown[]) => unknown>(fn: T): T {
     const cache = new Map<string, ReturnType<T>>();
     
     return ((...args: Parameters<T>): ReturnType<T> => {
         const key = JSON.stringify(args);
-        
-        if (cache.has(key)) {
-            return cache.get(key)! as ReturnType<T>;
-        }
+        if (cache.has(key)) return cache.get(key)!;
         
         const result = fn(...args) as ReturnType<T>;
         cache.set(key, result);
@@ -248,90 +225,81 @@ export function memoize<T extends (...args: unknown[]) => unknown>(
     }) as T;
 }
 
+// ============================================================================
+// VALIDATE - Check object against validation rules
+// ============================================================================
+
 /**
- * UTILITY 10: Generic Validation Function
- * Validates an object against a schema
- * 
+ * Validate an object against a schema of rules
  * @param obj - Object to validate
- * @param schema - Validation schema
- * @returns Validation result with errors
+ * @param schema - Object with validation functions for each field
+ * @returns Result with errors if validation fails
  */
-export function validate<T>(
-    obj: T,
-    schema: Partial<Record<keyof T, (value: unknown) => string | null>>
-): Result<T, Partial<Record<keyof T, string>>> {
+export function validate<T>(obj: T, schema: Partial<Record<keyof T, (value: unknown) => string | null>>): Result<T, Partial<Record<keyof T, string>>> {
     const errors = {} as Partial<Record<keyof T, string>>;
     
-    const keys = Object.keys(schema) as (keyof T)[];
-    for (const field of keys) {
+    for (const field of Object.keys(schema) as (keyof T)[]) {
         const validateFn = schema[field];
         if (validateFn) {
             const error = validateFn(obj[field as keyof typeof obj]);
-            if (error) {
-                errors[field] = error;
-            }
+            if (error) errors[field] = error;
         }
     }
     
-    const hasErrors = Object.keys(errors).length > 0;
-    
-    if (hasErrors) {
-        return { success: false, error: errors };
-    }
-    
-    return { success: true, data: obj };
+    return Object.keys(errors).length > 0 
+        ? { success: false, error: errors }
+        : { success: true, data: obj };
 }
 
+// ============================================================================
+// SEARCH BY - Search across multiple fields
+// ============================================================================
+
 /**
- * UTILITY 11: Generic Search Function
- * Searches array items by query string across multiple fields
- * 
+ * Search array by query string across multiple fields
  * @param items - Array to search
- * @param query - Search query
+ * @param query - Search term
  * @param fields - Fields to search in
  * @returns Filtered array
  */
-export function searchBy<T>(
-    items: T[],
-    query: string,
-    fields: (keyof T)[]
-): T[] {
-    if (!query.trim()) {
-        return items;
-    }
+export function searchBy<T>(items: T[], query: string, fields: (keyof T)[]): T[] {
+    if (!query.trim()) return items;
     
     const lowerQuery = query.toLowerCase().trim();
     
-    return items.filter(item => {
-        return fields.some(field => {
+    return items.filter(item =>
+        fields.some(field => {
             const value = item[field];
-            if (value === null || value === undefined) {
-                return false;
-            }
-            return String(value).toLowerCase().includes(lowerQuery);
-        });
-    });
+            return value != null && String(value).toLowerCase().includes(lowerQuery);
+        })
+    );
 }
 
+// ============================================================================
+// PIPE - Chain transformations
+// ============================================================================
+
 /**
- * UTILITY 12: Generic Pipeline Function
- * Applies multiple transformations to a value
- * 
- * @param value - Initial value
- * @param fns - Array of transformation functions
+ * Pipe - Apply multiple functions to a value in sequence
+ * @param value - Starting value
+ * @param fns - Functions to apply in order
  * @returns Final transformed value
+ * 
+ * Example: pipe(5, x => x * 2, x => x + 1) returns 11
  */
 export function pipe<T>(value: T, ...fns: ((value: T) => T)[]): T {
     return fns.reduce((acc, fn) => fn(acc), value);
 }
 
+// ============================================================================
+// CHUNK - Split array into chunks
+// ============================================================================
+
 /**
- * UTILITY 13: Generic Chunk Function
- * Splits array into chunks of specified size
- * 
- * @param items - Array to chunk
- * @param size - Chunk size
- * @returns Array of chunks
+ * Split array into smaller arrays of specified size
+ * @param items - Array to split
+ * @param size - Size of each chunk
+ * @returns Array of arrays
  */
 export function chunk<T>(items: T[], size: number): T[][] {
     const chunks: T[][] = [];
@@ -341,102 +309,92 @@ export function chunk<T>(items: T[], size: number): T[][] {
     return chunks;
 }
 
+// ============================================================================
+// OMIT - Remove properties from object
+// ============================================================================
+
 /**
- * UTILITY 14: Generic Omit Function
- * Creates object without specified keys
- * 
+ * Create a new object without specified properties
  * @param obj - Source object
- * @param keys - Keys to omit
- * Returns new object without the specified keys
+ * @param keys - Properties to remove
+ * @returns New object without those properties
  */
-export function omit<T extends object, K extends keyof T>(
-    obj: T,
-    keys: K[]
-): Omit<T, K> {
+export function omit<T extends object, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
     const result = { ...obj };
     keys.forEach(key => delete result[key]);
     return result;
 }
 
+// ============================================================================
+// PICK - Keep only specified properties
+// ============================================================================
+
 /**
- * UTILITY 15: Generic Pick Function
- * Creates object with only specified keys
- * 
+ * Create a new object with only specified properties
  * @param obj - Source object
- * @param keys - Keys to pick
- * Returns new object with only the specified keys
+ * @param keys - Properties to keep
+ * @returns New object with only those properties
  */
-export function pick<T extends object, K extends keyof T>(
-    obj: T,
-    keys: K[]
-): Pick<T, K> {
+export function pick<T extends object, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
     const result = {} as Pick<T, K>;
-    keys.forEach(key => {
-        if (key in obj) {
-            result[key] = obj[key];
-        }
-    });
+    keys.forEach(key => { if (key in obj) result[key] = obj[key]; });
     return result;
 }
 
 // ============================================================================
-// FORMAT HELPERS
+// FORMAT HELPERS - Convert values to display strings
 // ============================================================================
 
-/** Format status for display */
+/** Convert TaskStatus enum to display string */
 export const formatStatus = (status: TaskStatus): string => ({
     [TaskStatus.PENDING]: 'Pending',
     [TaskStatus.IN_PROGRESS]: 'In Progress',
     [TaskStatus.COMPLETED]: 'Completed'
 }[status] || status);
 
-/** Format priority for display */
+/** Convert TaskPriority enum to display string */
 export const formatPriority = (priority: TaskPriority): string => ({
     [TaskPriority.LOW]: 'Low',
     [TaskPriority.MEDIUM]: 'Medium',
     [TaskPriority.HIGH]: 'High'
 }[priority] || priority);
 
-/** Format date for display */
+/** Convert ISO date string to human-readable format */
 export const formatDate = (date: string | null): string => {
     if (!date) return '';
-    return new Date(date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
+    return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
 // ============================================================================
-// ID GENERATOR
+// ID GENERATOR - Create unique identifiers
 // ============================================================================
 
-/** Generate unique ID */
+/**
+ * Generate a unique ID with optional prefix
+ * @param prefix - Prefix for the ID (default: 'id')
+ * @returns Unique string like "task_1234567890_abc123def"
+ */
 export function generateId(prefix: string = 'id'): string {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 }
 
 // ============================================================================
-// DATE HELPERS
+// DATE HELPERS - Common date checks
 // ============================================================================
 
-/** Check if date is overdue */
+/** Check if a date is in the past */
 export function isOverdue(date: string | null): boolean {
-    if (!date) return false;
-    return new Date(date) < new Date();
+    return !!(date && new Date(date) < new Date());
 }
 
 /** Check if date is today */
 export function isToday(date: string | null): boolean {
     if (!date) return false;
-    const today = new Date();
-    const d = new Date(date);
-    return d.toDateString() === today.toDateString();
+    return new Date(date).toDateString() === new Date().toDateString();
 }
 
-/** Get days until date */
+/** Calculate days until a date (negative if past) */
 export function getDaysUntil(date: string | null): number | null {
     if (!date) return null;
-    const diff = new Date(date).getTime() - new Date().getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return Math.ceil((new Date(date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
 }

@@ -1,69 +1,34 @@
 // ============================================================================
-// TASK MANAGER
-// Main application logic with TypeScript strict mode
+// TASK MANAGER - Main application logic
+// This is the core of the task management application
+// Handles all CRUD operations, UI rendering, and event management
 // ============================================================================
 
-import {
-    Task,
-    TaskStatus,
-    TaskPriority,
-    TaskFilter,
-    TaskSort,
-    TaskStatistics,
-    Category,
-    CategoryFactoryData,
-    TaskDependency,
-    RecurringConfig,
-    RecurringFrequency,
-    TaskFactoryData,
-    SortField,
-    SortDirection,
-    ValidationError,
-    isTaskStatus,
-    isTaskPriority
-} from './types';
-
-import {
-    debounce,
-    deepClone,
-    filterBy,
-    sortBy,
-    groupBy,
-    uniqueBy,
-    searchBy,
-    generateId,
-    formatStatus,
-    formatPriority,
-    formatDate,
-    isOverdue,
-    isToday,
-    getDaysUntil,
-    retry,
-    memoize
-} from './utils';
-
-import {
-    TaskStorageService,
-    CategoryStorageService,
-    DependencyStorageService,
-    STORAGE_KEYS
-} from './storage';
+import { Task, TaskStatus, TaskPriority, TaskFilter, TaskSort, TaskStatistics, 
+    Category, CategoryFactoryData, TaskDependency, RecurringConfig, 
+    RecurringFrequency, TaskFactoryData, SortField, SortDirection } from './types';
+import { isTaskStatus, isTaskPriority } from './types';
+import { debounce, filterBy, searchBy, generateId, formatStatus, formatPriority, 
+    formatDate, isOverdue, getDaysUntil } from './utils';
+import { TaskStorageService, CategoryStorageService, DependencyStorageService } from './storage';
 
 // ============================================================================
-// VALIDATORS
+// VALIDATORS - Functions that check if input data is valid
+// Used to ensure data meets requirements before saving
 // ============================================================================
 
+/** Validators - Collection of validation functions for form fields */
 const Validators = {
     title: (v: unknown): string | null => {
         const val = v as string;
         if (!val?.trim()) return 'Title required';
-        if (val.trim().length > 100) return 'Title too long (max 100 characters)';
+        if (val.trim().length > 100) return 'Title too long (max 100)';
         return null;
     },
     
     description: (v: unknown): string | null => {
         const val = v as string;
-        if (val && val.length > 1000) return 'Description too long (max 1000 characters)';
+        if (val && val.length > 1000) return 'Description too long (max 1000)';
         return null;
     },
     
@@ -89,7 +54,7 @@ const Validators = {
         const val = v as string[];
         if (!Array.isArray(val)) return 'Tags must be an array';
         if (val.some(t => typeof t !== 'string')) return 'All tags must be strings';
-        if (val.some(t => t.length > 30)) return 'Tags must be under 30 characters';
+        if (val.some(t => t.length > 30)) return 'Tags max 30 characters';
         return null;
     },
     
@@ -101,11 +66,13 @@ const Validators = {
 };
 
 // ============================================================================
-// TASK FACTORY
+// FACTORY FUNCTIONS - Create new objects with default values
 // ============================================================================
 
 /**
- * Creates a new task object with all required properties
+ * Create a new Task with generated ID and timestamps
+ * @param data - Task data from form
+ * @returns Complete Task object ready to save
  */
 export function createTask(data: TaskFactoryData): Task {
     const now = new Date().toISOString();
@@ -119,39 +86,28 @@ export function createTask(data: TaskFactoryData): Task {
         dueDate: data.dueDate || null,
         tags: processTags(data.tags),
         categoryId: data.categoryId || null,
-        recurring: data.recurring || {
-            enabled: false,
-            frequency: RecurringFrequency.WEEKLY,
-            interval: 1,
-            endDate: null,
-            nextOccurrence: null
-        },
+        recurring: data.recurring || { enabled: false, frequency: RecurringFrequency.WEEKLY, 
+            interval: 1, endDate: null, nextOccurrence: null },
         dependsOn: data.dependsOn || [],
         createdAt: now,
         updatedAt: now
     };
 }
 
-/**
- * Process tags: clean up and remove duplicates
- */
+/** Clean up and deduplicate tags */
 function processTags(tags: string[] | undefined): string[] {
     if (!Array.isArray(tags)) return [];
     
     return [...new Set(
-        tags
-            .filter((t): t is string => typeof t === 'string')
+        tags.filter((t): t is string => typeof t === 'string')
             .map(t => t.trim().toLowerCase())
             .filter(t => t && t.length <= 30)
     )];
 }
 
-// ============================================================================
-// CATEGORY FACTORY
-// ============================================================================
-
 /**
- * Creates a new category object
+ * Create a new Category 
+ * @param data - Category data from form
  */
 export function createCategory(data: CategoryFactoryData): Category {
     const now = new Date().toISOString();
@@ -168,12 +124,10 @@ export function createCategory(data: CategoryFactoryData): Category {
     };
 }
 
-// ============================================================================
-// DEPENDENCY FACTORY
-// ============================================================================
-
 /**
- * Creates a new task dependency
+ * Create a new Dependency (link between tasks)
+ * @param taskId - Task that depends on another
+ * @param dependsOnTaskId - Task being depended upon
  */
 export function createDependency(taskId: string, dependsOnTaskId: string): TaskDependency {
     return {
@@ -185,11 +139,15 @@ export function createDependency(taskId: string, dependsOnTaskId: string): TaskD
 }
 
 // ============================================================================
-// TASK MANAGER CLASS
+// TASK MANAGER CLASS - Main application controller
 // ============================================================================
 
+/**
+ * TaskManager - Handles all task management functionality
+ * Manages state, storage, UI rendering, and user interactions
+ */
 export class TaskManager {
-    // In-memory storage
+    // In-memory storage (loaded from localStorage)
     private tasks: Task[] = [];
     private categories: Category[] = [];
     private dependencies: TaskDependency[] = [];
@@ -204,26 +162,23 @@ export class TaskManager {
     private categoryStorage: CategoryStorageService;
     private dependencyStorage: DependencyStorageService;
     
-    // Current filter and sort
+    // Current filter and sort settings
     currentFilter: TaskFilter = {};
-    currentSort: TaskSort = {
-        field: SortField.STATUS,
-        direction: SortDirection.ASC
-    };
+    currentSort: TaskSort = { field: SortField.STATUS, direction: SortDirection.ASC };
 
     constructor() {
+        // Initialize storage services
         this.taskStorage = new TaskStorageService();
         this.categoryStorage = new CategoryStorageService();
         this.dependencyStorage = new DependencyStorageService();
     }
 
     // ============================================================================
-    // INITIALIZATION
+    // INITIALIZATION - Load data and set up the app
     // ============================================================================
 
+    /** Initialize the app - load data from storage and render UI */
     async init(): Promise<void> {
-        console.log('[TaskManager] Initializing...');
-        
         try {
             // Load all data from localStorage
             this.tasks = await this.taskStorage.getTasks();
@@ -233,44 +188,33 @@ export class TaskManager {
             // Check for recurring tasks that need to be created
             await this.processRecurringTasks();
             
-            console.log(`[TaskManager] Loaded ${this.tasks.length} tasks, ${this.categories.length} categories`);
-            
             // Render the UI
             this.render();
-            console.log('[TaskManager] Render complete');
             
             // Set up event listeners
             this.bindEvents();
-            console.log('[TaskManager] Events bound successfully');
         } catch (e) {
             console.error('[TaskManager] Init error:', e);
         }
     }
 
     // ============================================================================
-    // EVENT BINDING
+    // EVENT BINDING - Connect HTML elements to JavaScript functions
     // ============================================================================
 
+    /** Set up event listeners for user interactions */
     bindEvents(): void {
-        // Prevent duplicate event binding
-        if (this.eventsBound) {
-            console.log('[TaskManager] Events already bound, skipping');
-            return;
-        }
+        if (this.eventsBound) return;
         this.eventsBound = true;
         
-        console.log('[TaskManager] Binding events...');
-        
+        // Helper to attach event listener to element
         const on = (id: string, e: string, fn: EventListener): void => {
             const el = document.getElementById(id);
-            if (el) {
-                el.addEventListener(e, fn);
-            } else {
-                console.warn(`[TaskManager] WARNING: Element #${id} not found`);
-            }
+            if (el) el.addEventListener(e, fn);
+            else console.warn(`[TaskManager] Element #${id} not found`);
         };
         
-        // Search input with debounce
+        // Search input with debounce (wait for user to stop typing)
         on('searchInput', 'input', debounce(() => this.render(), 300) as EventListener);
         
         // Filter dropdowns
@@ -278,93 +222,74 @@ export class TaskManager {
             on(id, 'change', () => this.render());
         });
         
-        // Tag filter
+        // Tag filter with debounce
         on('filterTags', 'input', debounce(() => this.render(), 300) as EventListener);
         
-        // Sort dropdown
-        on('sortField', 'change', () => {
-            this.updateSort();
-            this.render();
-        });
+        // Sort dropdowns
+        on('sortField', 'change', () => { this.updateSort(); this.render(); });
+        on('sortDirection', 'change', () => { this.updateSort(); this.render(); });
         
-        on('sortDirection', 'change', () => {
-            this.updateSort();
-            this.render();
-        });
-        
-        // Tag input
+        // Tag input - add tag on Enter or comma
         on('tagInput', 'keydown', (e) => {
             const event = e as KeyboardEvent;
             if (event.key === 'Enter' || event.key === ',') {
                 event.preventDefault();
-                const input = event.target as HTMLInputElement;
-                this.addTag(input);
+                this.addTag(event.target as HTMLInputElement);
             }
         });
         
-        // Modal click outside
+        // Close modal when clicking outside
         document.getElementById('taskModal')?.addEventListener('click', (e) => {
-            const event = e as MouseEvent;
-            if (event.target instanceof HTMLElement && event.target.id === 'taskModal') {
+            const target = e.target as HTMLElement;
+            if (target?.id === 'taskModal') {
                 this.closeModal();
             }
         });
         
-        // Escape key
+        // Close modal on Escape key
         document.addEventListener('keydown', (e) => {
-            const event = e as KeyboardEvent;
-            if (event.key === 'Escape') {
-                this.closeModal();
-            }
+            if ((e as KeyboardEvent).key === 'Escape') this.closeModal();
         });
         
         // Task form submission
-        const form = document.getElementById('taskForm');
-        if (form) {
-            form.addEventListener('submit', (e) => {
-                this.handleSubmit(e as unknown as Event);
-            });
-        }
+        document.getElementById('taskForm')?.addEventListener('submit', (e) => {
+            this.handleSubmit(e as unknown as Event);
+        });
         
         // Category form submission
-        const categoryForm = document.getElementById('categoryForm');
-        if (categoryForm) {
-            categoryForm.addEventListener('submit', (e) => {
-                this.handleCategorySubmit(e as unknown as Event);
-            });
-        }
+        document.getElementById('categoryForm')?.addEventListener('submit', (e) => {
+            this.handleCategorySubmit(e as unknown as Event);
+        });
     }
 
     // ============================================================================
-    // TAG MANAGEMENT
+    // TAG MANAGEMENT - Add/remove tags from tasks
     // ============================================================================
 
+    /** Add a tag to currentTags array */
     addTag(input: HTMLInputElement): void {
         const tag = input.value.trim().toLowerCase();
-        
         if (tag && !this.currentTags.includes(tag) && tag.length <= 30) {
             this.currentTags.push(tag);
             this.renderTags();
         }
-        
         input.value = '';
     }
 
+    /** Remove a tag from currentTags array */
     removeTag(tag: string): void {
         this.currentTags = this.currentTags.filter(t => t !== tag);
         this.renderTags();
     }
 
+    /** Render tag chips in the form */
     renderTags(): void {
         const container = document.getElementById('tagsContainer');
         const input = document.getElementById('tagInput') as HTMLInputElement | null;
-        
         if (!container) return;
         
-        // Remove existing tag chips
         container.querySelectorAll('.tag-chip').forEach(t => t.remove());
         
-        // Create new tag chips
         this.currentTags.forEach(t => {
             const chip = document.createElement('span');
             chip.className = 'tag-chip';
@@ -374,26 +299,24 @@ export class TaskManager {
     }
 
     // ============================================================================
-    // MODAL MANAGEMENT
+    // MODAL MANAGEMENT - Open/close dialogs
     // ============================================================================
 
+    /** Open the task form modal */
     openModal(edit: Task | null = null): void {
         this.editingId = edit?.id || null;
         this.currentTags = edit ? [...edit.tags] : [];
         
-        const form = document.getElementById('taskForm') as HTMLFormElement | null;
-        
-        // Update modal title
+        // Update modal title and button
         const titleEl = document.getElementById('modalTitle');
         const submitBtn = document.getElementById('submitBtn');
-        
         if (titleEl) titleEl.textContent = edit ? 'Edit Task' : 'Add New Task';
         if (submitBtn) submitBtn.textContent = edit ? 'Update Task' : 'Add Task';
         
-        // Reset form
+        // Reset and populate form
+        const form = document.getElementById('taskForm') as HTMLFormElement | null;
         if (form) form.reset();
         
-        // Populate form if editing
         if (edit) {
             this.setFormValue('taskId', edit.id);
             this.setFormValue('taskTitle', edit.title);
@@ -402,7 +325,6 @@ export class TaskManager {
             this.setFormValue('taskPriority', edit.priority);
             this.setFormValue('taskDueDate', edit.dueDate || '');
             
-            // Set recurring fields if enabled
             if (edit.recurring?.enabled) {
                 this.setFormValue('recurringEnabled', 'true');
                 this.setFormValue('recurringFrequency', edit.recurring.frequency);
@@ -410,46 +332,38 @@ export class TaskManager {
             }
         }
         
-        // Render tags
         this.renderTags();
         
-        // Show modal
-        const modal = document.getElementById('taskModal');
-        if (modal) modal.classList.add('active');
-        
-        // Focus title input
-        const titleInput = document.getElementById('taskTitle') as HTMLInputElement | null;
-        if (titleInput) titleInput.focus();
+        // Show modal and focus input
+        document.getElementById('taskModal')?.classList.add('active');
+        (document.getElementById('taskTitle') as HTMLInputElement)?.focus();
     }
 
+    /** Close the task form modal */
     closeModal(): void {
-        const modal = document.getElementById('taskModal');
-        if (modal) modal.classList.remove('active');
-        
-        const errorEl = document.getElementById('modalError');
-        if (errorEl) errorEl.classList.remove('visible');
-        
+        document.getElementById('taskModal')?.classList.remove('active');
+        document.getElementById('modalError')?.classList.remove('visible');
         this.editingId = null;
         this.currentTags = [];
     }
 
-    // Open modal for editing by task ID (more reliable than passing object)
+    /** Open modal for editing by task ID */
     openModalById(taskId: string): void {
         const task = this.tasks.find(t => t.id === taskId);
-        if (task) {
-            this.openModal(task);
-        }
+        if (task) this.openModal(task);
     }
 
+    /** Set form field value */
     private setFormValue(id: string, value: string): void {
         const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
         if (el) el.value = value;
     }
 
     // ============================================================================
-    // FORM SUBMISSION
+    // FORM SUBMISSION - Handle creating/updating tasks
     // ============================================================================
 
+    /** Handle task form submission */
     async handleSubmit(e: Event): Promise<void> {
         e.preventDefault();
         
@@ -465,7 +379,7 @@ export class TaskManager {
             dependsOn: this.getSelectedDependencies()
         };
         
-        // Handle recurring
+        // Handle recurring tasks
         const recurringEnabled = (document.getElementById('recurringEnabled') as HTMLInputElement | null)?.checked;
         if (recurringEnabled) {
             const frequency = (document.getElementById('recurringFrequency') as HTMLSelectElement | null)?.value as RecurringFrequency || RecurringFrequency.WEEKLY;
@@ -480,9 +394,8 @@ export class TaskManager {
             };
         }
         
-        // Validate
+        // Validate and check for errors
         const errors = this.validateTask(data);
-        
         if (errors.length > 0) {
             this.showModalError(errors[0]);
             return;
@@ -493,31 +406,17 @@ export class TaskManager {
                 // Update existing task
                 const index = this.tasks.findIndex(t => t.id === this.editingId);
                 if (index !== -1) {
-                    const updated: Task = {
-                        ...this.tasks[index],
-                        ...data,
-                        updatedAt: new Date().toISOString()
-                    };
-                    this.tasks[index] = updated;
+                    this.tasks[index] = { ...this.tasks[index], ...data, updatedAt: new Date().toISOString() };
                     this.msg('Task updated');
-                    // Save to localStorage
                     await this.taskStorage.saveTasks(this.tasks);
-                    
-                    // Close modal and render
                     this.closeModal();
                     this.render();
-                    return;
                 }
             } else {
                 // Create new task
-                const task = createTask(data);
-                this.tasks.push(task);
+                this.tasks.push(createTask(data));
                 this.msg('Task added');
-                
-                // Save to localStorage
                 await this.taskStorage.saveTasks(this.tasks);
-                
-                // Close modal and render
                 this.closeModal();
                 this.render();
             }
@@ -526,57 +425,47 @@ export class TaskManager {
         }
     }
 
+    /** Get selected dependencies from checkboxes */
     private getSelectedDependencies(): string[] {
         const checkboxes = document.querySelectorAll('.dependency-checkbox:checked') as NodeListOf<HTMLInputElement>;
         return Array.from(checkboxes).map(cb => cb.value);
     }
 
+    /** Validate task data and return list of errors */
     private validateTask(data: TaskFactoryData): string[] {
         const errors: string[] = [];
         
-        const titleError = Validators.title(data.title);
-        if (titleError) errors.push(titleError);
+        const validators = [
+            Validators.title(data.title),
+            Validators.description(data.description),
+            Validators.status(data.status),
+            Validators.priority(data.priority),
+            Validators.date(data.dueDate),
+            Validators.tags(data.tags),
+            Validators.categoryId(data.categoryId)
+        ];
         
-        const descError = Validators.description(data.description);
-        if (descError) errors.push(descError);
-        
-        const statusError = Validators.status(data.status);
-        if (statusError) errors.push(statusError);
-        
-        const priorityError = Validators.priority(data.priority);
-        if (priorityError) errors.push(priorityError);
-        
-        const dateError = Validators.date(data.dueDate);
-        if (dateError) errors.push(dateError);
-        
-        const tagsError = Validators.tags(data.tags);
-        if (tagsError) errors.push(tagsError);
+        validators.forEach(e => { if (e) errors.push(e); });
         
         return errors;
     }
 
     // ============================================================================
-    // TASK OPERATIONS
+    // TASK OPERATIONS - Toggle status, delete
     // ============================================================================
 
+    /** Cycle through task statuses (pending -> in progress -> completed) */
     async toggleStatus(id: string): Promise<void> {
         const task = this.tasks.find(t => t.id === id);
         if (!task) return;
         
-        const statusOrder = [
-            TaskStatus.PENDING,
-            TaskStatus.IN_PROGRESS,
-            TaskStatus.COMPLETED
-        ];
-        
+        const statusOrder = [TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED];
         const currentIndex = statusOrder.indexOf(task.status);
-        const next = statusOrder[(currentIndex + 1) % 3];
-        
-        task.status = next;
+        task.status = statusOrder[(currentIndex + 1) % 3];
         task.updatedAt = new Date().toISOString();
         
-        // Check if task is completed - process recurring
-        if (next === TaskStatus.COMPLETED && task.recurring?.enabled) {
+        // If completing a recurring task, create the next occurrence
+        if (task.status === TaskStatus.COMPLETED && task.recurring?.enabled) {
             await this.createRecurringTask(task);
         }
         
@@ -584,15 +473,14 @@ export class TaskManager {
         this.render();
     }
 
+    /** Delete a task */
     async deleteTask(id: string): Promise<void> {
         if (!confirm('Delete this task?')) return;
         
         this.tasks = this.tasks.filter(t => t.id !== id);
         
-        // Also remove dependencies related to this task
-        this.dependencies = this.dependencies.filter(
-            d => d.taskId !== id && d.dependsOnTaskId !== id
-        );
+        // Remove related dependencies
+        this.dependencies = this.dependencies.filter(d => d.taskId !== id && d.dependsOnTaskId !== id);
         
         await this.taskStorage.saveTasks(this.tasks);
         await this.dependencyStorage.saveDependencies(this.dependencies);
@@ -602,42 +490,27 @@ export class TaskManager {
     }
 
     // ============================================================================
-    // RECURRING TASKS
+    // RECURRING TASKS - Handle repeating tasks
     // ============================================================================
 
+    /** Calculate the next occurrence date based on frequency */
     private calculateNextOccurrence(frequency: RecurringFrequency, interval: number): string {
         const now = new Date();
         let next: Date;
         
         switch (frequency) {
-            case RecurringFrequency.DAILY:
-                next = new Date(now);
-                next.setDate(next.getDate() + interval);
-                break;
-            case RecurringFrequency.WEEKLY:
-                next = new Date(now);
-                next.setDate(next.getDate() + (7 * interval));
-                break;
-            case RecurringFrequency.BIWEEKLY:
-                next = new Date(now);
-                next.setDate(next.getDate() + (14 * interval));
-                break;
-            case RecurringFrequency.MONTHLY:
-                next = new Date(now);
-                next.setMonth(next.getMonth() + interval);
-                break;
-            case RecurringFrequency.YEARLY:
-                next = new Date(now);
-                next.setFullYear(next.getFullYear() + interval);
-                break;
-            default:
-                next = new Date(now);
-                next.setDate(next.getDate() + (7 * interval));
+            case RecurringFrequency.DAILY: next = new Date(now.setDate(now.getDate() + interval)); break;
+            case RecurringFrequency.WEEKLY: next = new Date(now.setDate(now.getDate() + 7 * interval)); break;
+            case RecurringFrequency.BIWEEKLY: next = new Date(now.setDate(now.getDate() + 14 * interval)); break;
+            case RecurringFrequency.MONTHLY: next = new Date(now.setMonth(now.getMonth() + interval)); break;
+            case RecurringFrequency.YEARLY: next = new Date(now.setFullYear(now.getFullYear() + interval)); break;
+            default: next = new Date(now.setDate(now.getDate() + 7 * interval));
         }
         
         return next.toISOString();
     }
 
+    /** Create a new task when a recurring task is completed */
     private async createRecurringTask(completedTask: Task): Promise<void> {
         if (!completedTask.recurring?.enabled) return;
         
@@ -646,9 +519,7 @@ export class TaskManager {
         // Check if we've reached the end date
         if (endDate) {
             const nextOccurrence = this.calculateNextOccurrence(frequency, interval);
-            if (new Date(nextOccurrence) > new Date(endDate)) {
-                return; // Don't create more recurring tasks
-            }
+            if (new Date(nextOccurrence) > new Date(endDate)) return;
         }
         
         // Create new task based on the completed one
@@ -663,29 +534,20 @@ export class TaskManager {
             dependsOn: []
         });
         
-        // Set the recurring config for the new task
-        newTask.recurring = {
-            enabled: true,
-            frequency,
-            interval,
-            endDate,
-            nextOccurrence: this.calculateNextOccurrence(frequency, interval)
-        };
+        newTask.recurring = { enabled: true, frequency, interval, endDate, 
+            nextOccurrence: this.calculateNextOccurrence(frequency, interval) };
         
         this.tasks.push(newTask);
         await this.taskStorage.saveTasks(this.tasks);
-        
-        console.log(`[TaskManager] Created recurring task: ${newTask.id}`);
     }
 
+    /** Check and process recurring tasks that are due */
     private async processRecurringTasks(): Promise<void> {
         const now = new Date();
         
         for (const task of this.tasks) {
             if (task.recurring?.enabled && task.recurring.nextOccurrence) {
                 const nextDate = new Date(task.recurring.nextOccurrence);
-                
-                // If it's time to create the recurring task
                 if (nextDate <= now && task.status !== TaskStatus.PENDING) {
                     await this.createRecurringTask(task);
                 }
@@ -694,11 +556,11 @@ export class TaskManager {
     }
 
     // ============================================================================
-    // TASK DEPENDENCIES
+    // TASK DEPENDENCIES - Handle task relationships
     // ============================================================================
 
+    /** Add a dependency between tasks */
     async addDependency(taskId: string, dependsOnTaskId: string): Promise<void> {
-        // Check for circular dependency
         if (await this.wouldCreateCircularDependency(taskId, dependsOnTaskId)) {
             throw new Error('Cannot add dependency: would create circular reference');
         }
@@ -708,33 +570,26 @@ export class TaskManager {
         this.dependencies = await this.dependencyStorage.getDependencies();
     }
 
+    /** Check if adding a dependency would create a cycle (A depends on B depends on A) */
     private async wouldCreateCircularDependency(taskId: string, dependsOnTaskId: string): Promise<boolean> {
-        // Simple DFS to check for cycles
         const visited = new Set<string>();
         const stack = [taskId];
         
         while (stack.length > 0) {
             const current = stack.pop()!;
+            if (current === dependsOnTaskId) return true;
             
-            if (current === dependsOnTaskId) {
-                return true;
-            }
-            
-            if (visited.has(current)) {
-                continue;
-            }
-            
+            if (visited.has(current)) continue;
             visited.add(current);
             
             const deps = this.dependencies.filter(d => d.dependsOnTaskId === current);
-            for (const dep of deps) {
-                stack.push(dep.taskId);
-            }
+            deps.forEach(d => stack.push(d.taskId));
         }
         
         return false;
     }
 
+    /** Get tasks blocking a specific task (incomplete dependencies) */
     getBlockingTasks(taskId: string): Task[] {
         const depIds = this.dependencies
             .filter(d => d.taskId === taskId)
@@ -744,13 +599,14 @@ export class TaskManager {
     }
 
     // ============================================================================
-    // FILTER AND SORT
+    // FILTER AND SORT - Customize task view
     // ============================================================================
 
+    /** Update current filter from form inputs */
     updateFilter(): void {
         this.currentFilter = {
-            status: this.getFilterValue('filterStatus') as TaskStatus | null || null,
-            priority: this.getFilterValue('filterPriority') as TaskPriority | null || null,
+            status: (this.getFilterValue('filterStatus') as TaskStatus) || null,
+            priority: (this.getFilterValue('filterPriority') as TaskPriority) || null,
             dueDate: this.getFilterValue('filterDueDate') || null,
             tag: this.getFilterValue('filterTags') || null,
             categoryId: this.getFilterValue('filterCategory') || null,
@@ -758,18 +614,19 @@ export class TaskManager {
         };
     }
 
+    /** Update current sort from form inputs */
     updateSort(): void {
-        const field = this.getFilterValue('sortField') as SortField || SortField.STATUS;
-        const direction = this.getFilterValue('sortDirection') as SortDirection || SortDirection.ASC;
-        
-        this.currentSort = { field, direction };
+        this.currentSort = {
+            field: (this.getFilterValue('sortField') as SortField) || SortField.STATUS,
+            direction: (this.getFilterValue('sortDirection') as SortDirection) || SortDirection.ASC
+        };
     }
 
     private getFilterValue(id: string): string {
-        const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
-        return el?.value || '';
+        return (document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null)?.value || '';
     }
 
+    /** Get filtered and sorted tasks */
     getFiltered(): Task[] {
         this.updateFilter();
         this.updateSort();
@@ -777,49 +634,29 @@ export class TaskManager {
         let result = [...this.tasks];
         
         // Apply search
-        if (this.currentFilter.searchQuery) {
+        if (this.currentFilter.searchQuery) 
             result = searchBy(result, this.currentFilter.searchQuery, ['title', 'description', 'tags']);
-        }
         
         // Apply filters
-        if (this.currentFilter.status) {
+        if (this.currentFilter.status) 
             result = filterBy(result, t => t.status === this.currentFilter.status);
-        }
-        
-        if (this.currentFilter.priority) {
+        if (this.currentFilter.priority) 
             result = filterBy(result, t => t.priority === this.currentFilter.priority);
-        }
-        
-        if (this.currentFilter.categoryId) {
+        if (this.currentFilter.categoryId) 
             result = filterBy(result, t => t.categoryId === this.currentFilter.categoryId);
-        }
-        
-        if (this.currentFilter.tag) {
+        if (this.currentFilter.tag) 
             result = filterBy(result, t => t.tags.includes(this.currentFilter.tag!));
-        }
         
-        if (this.currentFilter.dueDate) {
-            result = filterBy(result, t => t.dueDate === this.currentFilter.dueDate);
-        }
-        
-        // Apply sorting
+        // Sort and move completed to bottom
         result = this.taskStorage.sortTasks(result, this.currentSort);
         
-        // Move completed tasks to bottom
-        const completed: Task[] = [];
-        const notCompleted: Task[] = [];
-        
-        result.forEach(t => {
-            if (t.status === TaskStatus.COMPLETED) {
-                completed.push(t);
-            } else {
-                notCompleted.push(t);
-            }
-        });
+        const completed = result.filter(t => t.status === TaskStatus.COMPLETED);
+        const notCompleted = result.filter(t => t.status !== TaskStatus.COMPLETED);
         
         return [...notCompleted, ...completed];
     }
 
+    /** Clear all filters */
     clearFilters(): void {
         ['searchInput', 'filterStatus', 'filterPriority', 'filterDueDate', 'filterTags', 'filterCategory'].forEach(id => {
             const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
@@ -831,71 +668,42 @@ export class TaskManager {
     }
 
     // ============================================================================
-    // STATISTICS
+    // STATISTICS - Calculate task metrics
     // ============================================================================
 
+    /** Calculate task statistics for dashboard */
     getStatistics(): TaskStatistics {
         const stats: TaskStatistics = {
-            total: this.tasks.length,
-            pending: 0,
-            inProgress: 0,
-            completed: 0,
-            overdue: 0,
-            byPriority: {
-                [TaskPriority.LOW]: 0,
-                [TaskPriority.MEDIUM]: 0,
-                [TaskPriority.HIGH]: 0
-            },
-            byCategory: {},
-            byTag: {},
-            completionRate: 0,
-            upcomingDue: 0
+            total: this.tasks.length, pending: 0, inProgress: 0, completed: 0, overdue: 0,
+            byPriority: { [TaskPriority.LOW]: 0, [TaskPriority.MEDIUM]: 0, [TaskPriority.HIGH]: 0 },
+            byCategory: {}, byTag: {}, completionRate: 0, upcomingDue: 0
         };
-        
-        const now = new Date();
         
         this.tasks.forEach(task => {
             // Status counts
-            switch (task.status) {
-                case TaskStatus.PENDING:
-                    stats.pending++;
-                    break;
-                case TaskStatus.IN_PROGRESS:
-                    stats.inProgress++;
-                    break;
-                case TaskStatus.COMPLETED:
-                    stats.completed++;
-                    break;
-            }
+            if (task.status === TaskStatus.PENDING) stats.pending++;
+            else if (task.status === TaskStatus.IN_PROGRESS) stats.inProgress++;
+            else if (task.status === TaskStatus.COMPLETED) stats.completed++;
             
             // Priority counts
             stats.byPriority[task.priority]++;
             
             // Category counts
-            if (task.categoryId) {
-                stats.byCategory[task.categoryId] = (stats.byCategory[task.categoryId] || 0) + 1;
-            }
+            if (task.categoryId) stats.byCategory[task.categoryId] = (stats.byCategory[task.categoryId] || 0) + 1;
             
             // Tag counts
-            task.tags.forEach(tag => {
-                stats.byTag[tag] = (stats.byTag[tag] || 0) + 1;
-            });
+            task.tags.forEach(tag => stats.byTag[tag] = (stats.byTag[tag] || 0) + 1);
             
             // Overdue check
-            if (task.dueDate && isOverdue(task.dueDate) && task.status !== TaskStatus.COMPLETED) {
-                stats.overdue++;
-            }
+            if (task.dueDate && isOverdue(task.dueDate) && task.status !== TaskStatus.COMPLETED) stats.overdue++;
             
             // Upcoming due (within 7 days)
             if (task.dueDate && !isOverdue(task.dueDate)) {
                 const days = getDaysUntil(task.dueDate);
-                if (days !== null && days <= 7 && task.status !== TaskStatus.COMPLETED) {
-                    stats.upcomingDue++;
-                }
+                if (days !== null && days <= 7 && task.status !== TaskStatus.COMPLETED) stats.upcomingDue++;
             }
         });
         
-        // Calculate completion rate
         stats.completionRate = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
         
         return stats;
@@ -905,6 +713,7 @@ export class TaskManager {
     // CATEGORY MANAGEMENT
     // ============================================================================
 
+    /** Handle category form submission */
     async handleCategorySubmit(e: Event): Promise<void> {
         e.preventDefault();
         
@@ -915,14 +724,9 @@ export class TaskManager {
             priority: (document.getElementById('categoryPriority') as HTMLSelectElement | null)?.value as TaskPriority || undefined
         };
         
-        if (!data.name.trim()) {
-            this.showError('Category name is required');
-            return;
-        }
+        if (!data.name.trim()) { this.showError('Category name is required'); return; }
         
-        const category = createCategory(data);
-        this.categories.push(category);
-        
+        this.categories.push(createCategory(data));
         await this.categoryStorage.saveCategories(this.categories);
         
         this.msg('Category created');
@@ -930,10 +734,9 @@ export class TaskManager {
         this.closeCategoryModal();
     }
 
+    /** Open category modal */
     openCategoryModal(edit: Category | null = null): void {
-        const modal = document.getElementById('categoryModal');
         const titleEl = document.getElementById('categoryModalTitle');
-        
         if (titleEl) titleEl.textContent = edit ? 'Edit Category' : 'Add Category';
         
         const form = document.getElementById('categoryForm') as HTMLFormElement | null;
@@ -944,30 +747,25 @@ export class TaskManager {
             this.setFormValue('categoryName', edit.name);
             this.setFormValue('categoryColor', edit.color);
             this.setFormValue('categoryDescription', edit.description || '');
-            if (edit.priority) {
-                this.setFormValue('categoryPriority', edit.priority);
-            }
+            if (edit.priority) this.setFormValue('categoryPriority', edit.priority);
         }
         
-        if (modal) modal.classList.add('active');
+        document.getElementById('categoryModal')?.classList.add('active');
     }
 
+    /** Close category modal */
     closeCategoryModal(): void {
-        const modal = document.getElementById('categoryModal');
-        if (modal) modal.classList.remove('active');
+        document.getElementById('categoryModal')?.classList.remove('active');
     }
 
+    /** Delete a category */
     async deleteCategory(id: string): Promise<void> {
         if (!confirm('Delete this category?')) return;
         
         this.categories = this.categories.filter(c => c.id !== id);
         
         // Remove category from tasks
-        this.tasks.forEach(task => {
-            if (task.categoryId === id) {
-                task.categoryId = null;
-            }
-        });
+        this.tasks.forEach(task => { if (task.categoryId === id) task.categoryId = null; });
         
         await this.categoryStorage.saveCategories(this.categories);
         await this.taskStorage.saveTasks(this.tasks);
@@ -976,37 +774,27 @@ export class TaskManager {
         this.renderCategories();
     }
 
+    /** Get category by ID */
     getCategoryById(id: string): Category | undefined {
         return this.categories.find(c => c.id === id);
     }
 
     // ============================================================================
-    // RENDERING
+    // RENDERING - Update the DOM with current state
     // ============================================================================
 
+    /** Render the task list */
     render(): void {
-        console.log('[TaskManager] Rendering tasks...');
-        
         const list = document.getElementById('taskList');
         const count = document.getElementById('taskCount');
         
-        if (!list || !count) {
-            console.error('[TaskManager] ERROR: taskList or taskCount element not found!');
-            return;
-        }
+        if (!list || !count) { console.error('[TaskManager] taskList or taskCount not found!'); return; }
         
         const filtered = this.getFiltered();
         count.textContent = `${filtered.length} task${filtered.length !== 1 ? 's' : ''}`;
         
         if (filtered.length === 0) {
-            list.innerHTML = `
-                <div class="empty-state">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                    </svg>
-                    <p>No tasks found</p>
-                </div>
-            `;
+            list.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg><p>No tasks found</p></div>`;
             return;
         }
         
@@ -1039,10 +827,10 @@ export class TaskManager {
             `;
         }).join('');
         
-        // Render statistics if stats panel exists
         this.renderStatistics();
     }
 
+    /** Render statistics panel */
     renderStatistics(): void {
         const statsPanel = document.getElementById('statsPanel');
         if (!statsPanel) return;
@@ -1051,38 +839,18 @@ export class TaskManager {
         
         statsPanel.innerHTML = `
             <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value">${stats.total}</div>
-                    <div class="stat-label">Total</div>
-                </div>
-                <div class="stat-card pending">
-                    <div class="stat-value">${stats.pending}</div>
-                    <div class="stat-label">Pending</div>
-                </div>
-                <div class="stat-card in-progress">
-                    <div class="stat-value">${stats.inProgress}</div>
-                    <div class="stat-label">In Progress</div>
-                </div>
-                <div class="stat-card completed">
-                    <div class="stat-value">${stats.completed}</div>
-                    <div class="stat-label">Completed</div>
-                </div>
-                <div class="stat-card overdue">
-                    <div class="stat-value">${stats.overdue}</div>
-                    <div class="stat-label">Overdue</div>
-                </div>
-                <div class="stat-card upcoming">
-                    <div class="stat-value">${stats.upcomingDue}</div>
-                    <div class="stat-label">Due Soon</div>
-                </div>
-                <div class="stat-card rate">
-                    <div class="stat-value">${stats.completionRate.toFixed(1)}%</div>
-                    <div class="stat-label">Completion Rate</div>
-                </div>
+                <div class="stat-card"><div class="stat-value">${stats.total}</div><div class="stat-label">Total</div></div>
+                <div class="stat-card pending"><div class="stat-value">${stats.pending}</div><div class="stat-label">Pending</div></div>
+                <div class="stat-card in-progress"><div class="stat-value">${stats.inProgress}</div><div class="stat-label">In Progress</div></div>
+                <div class="stat-card completed"><div class="stat-value">${stats.completed}</div><div class="stat-label">Completed</div></div>
+                <div class="stat-card overdue"><div class="stat-value">${stats.overdue}</div><div class="stat-label">Overdue</div></div>
+                <div class="stat-card upcoming"><div class="stat-value">${stats.upcomingDue}</div><div class="stat-label">Due Soon</div></div>
+                <div class="stat-card rate"><div class="stat-value">${stats.completionRate.toFixed(1)}%</div><div class="stat-label">Completion Rate</div></div>
             </div>
         `;
     }
 
+    /** Render category list */
     renderCategories(): void {
         const container = document.getElementById('categoryList');
         if (!container) return;
@@ -1100,7 +868,7 @@ export class TaskManager {
             </div>
         `).join('');
         
-        // Also update category dropdown in task form
+        // Update category dropdown
         const select = document.getElementById('taskCategory') as HTMLSelectElement | null;
         if (select) {
             const currentValue = select.value;
@@ -1114,70 +882,55 @@ export class TaskManager {
     // UTILITY METHODS
     // ============================================================================
 
+    /** Escape HTML to prevent XSS attacks */
     escapeHtml(text: string): string {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
 
+    /** Show success message */
     msg(text: string): void {
         const el = document.getElementById('successMessage');
-        if (el) {
-            el.textContent = text;
-            el.classList.add('visible');
-            setTimeout(() => el.classList.remove('visible'), 3000);
-        }
+        if (el) { el.textContent = text; el.classList.add('visible'); setTimeout(() => el.classList.remove('visible'), 3000); }
     }
 
+    /** Show error message */
     err(text: string): void {
         const el = document.getElementById('errorMessage');
-        if (el) {
-            el.textContent = text;
-            el.classList.add('visible');
-            setTimeout(() => el.classList.remove('visible'), 5000);
-        }
+        if (el) { el.textContent = text; el.classList.add('visible'); setTimeout(() => el.classList.remove('visible'), 5000); }
     }
 
+    /** Show modal error */
     showModalError(text: string): void {
         const el = document.getElementById('modalError');
-        if (el) {
-            el.textContent = text;
-            el.classList.add('visible');
-        }
+        if (el) { el.textContent = text; el.classList.add('visible'); }
     }
 
+    /** Show error */
     showError(text: string): void {
         const el = document.getElementById('errorMessage');
-        if (el) {
-            el.textContent = text;
-            el.classList.add('visible');
-            setTimeout(() => el.classList.remove('visible'), 5000);
-        }
+        if (el) { el.textContent = text; el.classList.add('visible'); setTimeout(() => el.classList.remove('visible'), 5000); }
     }
 
     // ============================================================================
-    // COMMAND API
+    // COMMAND API - Programmatic access
     // ============================================================================
 
+    /** Programmatic API for external code */
     commands = {
         add: (data: TaskFactoryData): void => {
-            const task = createTask(data);
-            this.tasks.push(task);
+            this.tasks.push(createTask(data));
             this.taskStorage.saveTasks(this.tasks).then(() => this.render());
         },
         
-        list: async (filter: TaskFilter = {}): Promise<Task[]> => {
-            return this.taskStorage.filterTasks(filter);
-        },
+        list: async (filter: TaskFilter = {}): Promise<Task[]> => this.taskStorage.filterTasks(filter),
         
         update: async (id: string, data: Partial<Task>): Promise<Task | null> => {
             const result = await this.taskStorage.updateTask(id, data);
             if (result) {
                 const index = this.tasks.findIndex(t => t.id === id);
-                if (index !== -1) {
-                    this.tasks[index] = result;
-                }
-                this.render();
+                if (index !== -1) { this.tasks[index] = result; this.render(); }
             }
             return result;
         },
@@ -1188,13 +941,9 @@ export class TaskManager {
             this.render();
         },
         
-        search: async (query: string): Promise<Task[]> => {
-            return searchBy(this.tasks, query, ['title', 'description', 'tags']);
-        },
+        search: async (query: string): Promise<Task[]> => searchBy(this.tasks, query, ['title', 'description', 'tags']),
         
-        stats: (): TaskStatistics => {
-            return this.getStatistics();
-        }
+        stats: (): TaskStatistics => this.getStatistics()
     };
 }
 
@@ -1204,8 +953,8 @@ export class TaskManager {
 
 export const taskManager = new TaskManager();
 
-// Make available globally
+// Make available globally for onclick handlers
 (window as unknown as { taskManager: TaskManager }).taskManager = taskManager;
 
-// Initialize on DOM ready
+// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => taskManager.init());

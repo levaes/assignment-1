@@ -1,27 +1,31 @@
 // ============================================================================
-// TYPE DEFINITIONS
-// Custom type definitions for all entities
+// TYPES - TypeScript type definitions for the Task Manager
+// These define the "shape" of our data - what properties each object has
 // ============================================================================
 
 // ============================================================================
 // ENUM TYPES
+// Enums are like "named constants" - they give meaningful names to values
 // ============================================================================
 
-/** Task status enum */
+/** 
+ * TaskStatus - Represents the current state of a task
+ * Why use an enum? Makes code readable - "COMPLETED" is clearer than "done"
+ */
 export enum TaskStatus {
-    PENDING = 'pending',
-    IN_PROGRESS = 'in-progress',
-    COMPLETED = 'completed'
+    PENDING = 'pending',        // Task needs to be done
+    IN_PROGRESS = 'in-progress', // Task is being worked on
+    COMPLETED = 'completed'      // Task is finished
 }
 
-/** Task priority enum */
+/** TaskPriority - How important is this task? */
 export enum TaskPriority {
     LOW = 'low',
-    MEDIUM = 'medium',
+    MEDIUM = 'medium', 
     HIGH = 'high'
 }
 
-/** Recurring frequency enum */
+/** RecurringFrequency - How often does a task repeat? */
 export enum RecurringFrequency {
     DAILY = 'daily',
     WEEKLY = 'weekly',
@@ -30,7 +34,7 @@ export enum RecurringFrequency {
     YEARLY = 'yearly'
 }
 
-/** Sort field enum */
+/** SortField - What field to sort tasks by */
 export enum SortField {
     TITLE = 'title',
     PRIORITY = 'priority',
@@ -40,7 +44,7 @@ export enum SortField {
     UPDATED_AT = 'updatedAt'
 }
 
-/** Sort direction enum */
+/** SortDirection - Ascending or descending order */
 export enum SortDirection {
     ASC = 'asc',
     DESC = 'desc'
@@ -48,38 +52,39 @@ export enum SortDirection {
 
 // ============================================================================
 // INTERFACE TYPES
+// Interfaces define the structure of objects - like a blueprint
 // ============================================================================
 
-/** Category entity - groups tasks by category */
+/** Category - Groups tasks together (e.g., "Work", "Personal") */
 export interface Category {
-    id: string;
-    name: string;
-    color: string;
-    description?: string;
-    parentId?: string | null;
-    priority?: TaskPriority;
-    createdAt: string;
+    id: string;              // Unique identifier
+    name: string;            // Display name
+    color: string;           // Visual color (hex code)
+    description?: string;   // Optional description
+    parentId?: string | null; // For nested categories
+    priority?: TaskPriority; // Default priority for this category
+    createdAt: string;       // ISO timestamp
     updatedAt: string;
 }
 
-/** Task dependency - links tasks that depend on each other */
+/** TaskDependency - Links tasks together (task B depends on task A) */
 export interface TaskDependency {
     id: string;
-    taskId: string;
-    dependsOnTaskId: string;
+    taskId: string;          // The dependent task
+    dependsOnTaskId: string; // The task it depends on
     createdAt: string;
 }
 
-/** Recurring task configuration */
+/** RecurringConfig - Configuration for repeating tasks */
 export interface RecurringConfig {
-    enabled: boolean;
-    frequency: RecurringFrequency;
-    interval: number;
-    endDate?: string | null;
-    nextOccurrence?: string | null;
+    enabled: boolean;           // Is this task recurring?
+    frequency: RecurringFrequency; // How often it repeats
+    interval: number;           // Every N intervals (e.g., every 2 weeks)
+    endDate?: string | null;    // When to stop repeating
+    nextOccurrence?: string | null; // Next due date
 }
 
-/** Task entity - core task object */
+/** Task - The main entity */
 export interface Task {
     id: string;
     title: string;
@@ -90,12 +95,12 @@ export interface Task {
     tags: string[];
     categoryId?: string | null;
     recurring?: RecurringConfig;
-    dependsOn: string[];
+    dependsOn: string[];     // Array of task IDs this depends on
     createdAt: string;
     updatedAt: string;
 }
 
-/** Filter options for tasks */
+/** TaskFilter - Options for filtering tasks */
 export interface TaskFilter {
     status?: TaskStatus | null;
     priority?: TaskPriority | null;
@@ -107,13 +112,13 @@ export interface TaskFilter {
     dateTo?: string | null;
 }
 
-/** Sort options for tasks */
+/** TaskSort - Options for sorting tasks */
 export interface TaskSort {
     field: SortField;
     direction: SortDirection;
 }
 
-/** Statistics for task overview */
+/** TaskStatistics - Summary counts for dashboard */
 export interface TaskStatistics {
     total: number;
     pending: number;
@@ -128,20 +133,20 @@ export interface TaskStatistics {
     upcomingDue: number;
 }
 
-/** Validation error */
+/** ValidationError - Form validation error */
 export interface ValidationError {
     field: string;
     message: string;
 }
 
-/** API response wrapper */
+/** ApiResponse - Standard API response wrapper */
 export interface ApiResponse<T> {
     success: boolean;
     data?: T;
     error?: string;
 }
 
-/** Storage service interface */
+/** IStorageService - Interface for storage operations */
 export interface IStorageService {
     get<T>(key: string): Promise<T[]>;
     set<T>(key: string, data: T[]): Promise<void>;
@@ -150,72 +155,63 @@ export interface IStorageService {
 
 // ============================================================================
 // GENERIC TYPE UTILITIES
+// Generic types that work with any data type
 // ============================================================================
 
-/** Result type for operations that can fail */
+/** Result - Represents success or failure of an operation (like a union type) */
 export type Result<T, E = Error> = 
     | { success: true; data: T }
     | { success: false; error: E };
 
-/** Optional type wrapper */
+/** Optional - Can be the value, null, or undefined */
 export type Optional<T> = T | null | undefined;
 
-/** Readonly array type */
-export type ReadonlyArray<T> = readonly T[];
-
-/** Function type for callbacks */
+/** Callback - Function that returns nothing (void) */
 export type Callback<T = void> = () => T;
+
+/** AsyncCallback - Async function that returns nothing */
 export type AsyncCallback<T = void> = () => Promise<T>;
 
-/** Event handler type */
+/** EventHandler - Function that handles DOM events */
 export type EventHandler<T extends Event = Event> = (event: T) => void;
 
 // ============================================================================
 // TYPE GUARDS
+// Type guards help TypeScript know the exact type of a value
+// They return "true" if the value matches the expected type
 // ============================================================================
 
-/** Type guard for TaskStatus */
+/** Check if value is a valid TaskStatus */
 export function isTaskStatus(value: unknown): value is TaskStatus {
     return Object.values(TaskStatus).includes(value as TaskStatus);
 }
 
-/** Type guard for TaskPriority */
+/** Check if value is a valid TaskPriority */
 export function isTaskPriority(value: unknown): value is TaskPriority {
     return Object.values(TaskPriority).includes(value as TaskPriority);
 }
 
-/** Type guard for RecurringFrequency */
+/** Check if value is a valid RecurringFrequency */
 export function isRecurringFrequency(value: unknown): value is RecurringFrequency {
     return Object.values(RecurringFrequency).includes(value as RecurringFrequency);
 }
 
-/** Type guard for Task */
+/** Check if value is a Task (has required fields) */
 export function isTask(value: unknown): value is Task {
-    return (
-        typeof value === 'object' &&
-        value !== null &&
-        'id' in value &&
-        'title' in value &&
-        'status' in value
-    );
+    return !!(value && typeof value === 'object' && 'id' in value && 'title' in value && 'status' in value);
 }
 
-/** Type guard for Category */
+/** Check if value is a Category */
 export function isCategory(value: unknown): value is Category {
-    return (
-        typeof value === 'object' &&
-        value !== null &&
-        'id' in value &&
-        'name' in value &&
-        'color' in value
-    );
+    return !!(value && typeof value === 'object' && 'id' in value && 'name' in value && 'color' in value);
 }
 
 // ============================================================================
-// FACTORY FUNCTION TYPES
+// FACTORY DATA INTERFACES
+// These define what data is needed to create new objects
 // ============================================================================
 
-/** Task factory data */
+/** Data needed to create a Task */
 export interface TaskFactoryData {
     title: string;
     description?: string;
@@ -228,7 +224,7 @@ export interface TaskFactoryData {
     dependsOn?: string[];
 }
 
-/** Category factory data */
+/** Data needed to create a Category */
 export interface CategoryFactoryData {
     name: string;
     color: string;
