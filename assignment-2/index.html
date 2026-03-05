@@ -728,7 +728,7 @@
                 <button class="close-btn" onclick="taskManager.closeModal()">&times;</button>
             </div>
             <div id="modalError" class="error-message"></div>
-            <form id="taskForm" onsubmit="return taskManager.handleSubmit(event)">
+            <form id="taskForm">
                 <input type="hidden" id="taskId">
                 
                 <!-- Task Title -->
@@ -837,7 +837,7 @@
                 <h2 id="categoryModalTitle">Add Category</h2>
                 <button class="close-btn" onclick="taskManager.closeCategoryModal()">&times;</button>
             </div>
-            <form id="categoryForm" onsubmit="return taskManager.handleCategorySubmit(event)">
+            <form id="categoryForm">
                 <input type="hidden" id="categoryId">
                 
                 <div class="form-group">
@@ -880,15 +880,13 @@
         </div>
     </div>
     
+    
     <!-- ============================================
-         JAVASCRIPT - Compiled from TypeScript
+         JAVASCRIPT - Bundled from TypeScript
          ============================================ -->
-    <script type="module">
-        // Import the compiled TaskManager from dist/
-        import { taskManager } from './dist/taskManager.js';
-        
-        // Make available globally for onclick handlers
-        window.taskManager = taskManager;
+    <script src="./dist/bundle.js"></script>
+    <script>
+        // The bundle.js already sets window.taskManager and calls init() on DOMContentLoaded
     </script>
 </body>
 </html>

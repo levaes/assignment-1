@@ -364,6 +364,13 @@ export class TaskManager {
         this.editingId = null;
         this.currentTags = [];
     }
+    // Open modal for editing by task ID (more reliable than passing object)
+    openModalById(taskId) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (task) {
+            this.openModal(task);
+        }
+    }
     setFormValue(id, value) {
         const el = document.getElementById(id);
         if (el)
@@ -416,6 +423,12 @@ export class TaskManager {
                     };
                     this.tasks[index] = updated;
                     this.msg('Task updated');
+                    // Save to localStorage
+                    await this.taskStorage.saveTasks(this.tasks);
+                    // Close modal and render
+                    this.closeModal();
+                    this.render();
+                    return;
                 }
             }
             else {
@@ -423,12 +436,12 @@ export class TaskManager {
                 const task = createTask(data);
                 this.tasks.push(task);
                 this.msg('Task added');
+                // Save to localStorage
+                await this.taskStorage.saveTasks(this.tasks);
+                // Close modal and render
+                this.closeModal();
+                this.render();
             }
-            // Save to localStorage
-            await this.taskStorage.saveTasks(this.tasks);
-            // Close modal and render
-            this.closeModal();
-            this.render();
         }
         catch (err) {
             this.showModalError(err instanceof Error ? err.message : 'An error occurred');
@@ -841,7 +854,7 @@ export class TaskManager {
                         <div class="task-actions">
                             ${isBlocked ? `<span class="block-badge" title="Waiting on: ${blockingTasks.map(b => b.title).join(', ')}">⏳</span>` : ''}
                             <button class="btn-success" onclick="taskManager.toggleStatus('${this.escapeHtml(t.id)}')">${t.status === TaskStatus.COMPLETED ? '↩️' : '✓'}</button>
-                            <button class="btn-primary" onclick="taskManager.openModal(taskManager.tasks.find(task => task.id === '${this.escapeHtml(t.id)}'))">✏️</button>
+                            <button class="btn-primary" onclick="taskManager.openModalById('${this.escapeHtml(t.id)}')">✏️</button>
                             <button class="btn-danger" onclick="taskManager.deleteTask('${this.escapeHtml(t.id)}')">🗑️</button>
                         </div>
                     </div>

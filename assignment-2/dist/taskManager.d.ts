@@ -30,6 +30,7 @@ export declare class TaskManager {
     renderTags(): void;
     openModal(edit?: Task | null): void;
     closeModal(): void;
+    openModalById(taskId: string): void;
     private setFormValue;
     handleSubmit(e: Event): Promise<void>;
     private getSelectedDependencies;

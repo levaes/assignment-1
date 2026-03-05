@@ -197,6 +197,7 @@ export class TaskManager {
     // Form state
     currentTags: string[] = [];
     editingId: string | null = null;
+    private eventsBound: boolean = false;
     
     // Storage services
     private taskStorage: TaskStorageService;
@@ -251,6 +252,13 @@ export class TaskManager {
     // ============================================================================
 
     bindEvents(): void {
+        // Prevent duplicate event binding
+        if (this.eventsBound) {
+            console.log('[TaskManager] Events already bound, skipping');
+            return;
+        }
+        this.eventsBound = true;
+        
         console.log('[TaskManager] Binding events...');
         
         const on = (id: string, e: string, fn: EventListener): void => {
@@ -425,6 +433,14 @@ export class TaskManager {
         this.currentTags = [];
     }
 
+    // Open modal for editing by task ID (more reliable than passing object)
+    openModalById(taskId: string): void {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (task) {
+            this.openModal(task);
+        }
+    }
+
     private setFormValue(id: string, value: string): void {
         const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
         if (el) el.value = value;
@@ -484,20 +500,27 @@ export class TaskManager {
                     };
                     this.tasks[index] = updated;
                     this.msg('Task updated');
+                    // Save to localStorage
+                    await this.taskStorage.saveTasks(this.tasks);
+                    
+                    // Close modal and render
+                    this.closeModal();
+                    this.render();
+                    return;
                 }
             } else {
                 // Create new task
                 const task = createTask(data);
                 this.tasks.push(task);
                 this.msg('Task added');
+                
+                // Save to localStorage
+                await this.taskStorage.saveTasks(this.tasks);
+                
+                // Close modal and render
+                this.closeModal();
+                this.render();
             }
-            
-            // Save to localStorage
-            await this.taskStorage.saveTasks(this.tasks);
-            
-            // Close modal and render
-            this.closeModal();
-            this.render();
         } catch (err) {
             this.showModalError(err instanceof Error ? err.message : 'An error occurred');
         }
@@ -999,7 +1022,7 @@ export class TaskManager {
                         <div class="task-actions">
                             ${isBlocked ? `<span class="block-badge" title="Waiting on: ${blockingTasks.map(b => b.title).join(', ')}">⏳</span>` : ''}
                             <button class="btn-success" onclick="taskManager.toggleStatus('${this.escapeHtml(t.id)}')">${t.status === TaskStatus.COMPLETED ? '↩️' : '✓'}</button>
-                            <button class="btn-primary" onclick="taskManager.openModal(taskManager.tasks.find(task => task.id === '${this.escapeHtml(t.id)}'))">✏️</button>
+                            <button class="btn-primary" onclick="taskManager.openModalById('${this.escapeHtml(t.id)}')">✏️</button>
                             <button class="btn-danger" onclick="taskManager.deleteTask('${this.escapeHtml(t.id)}')">🗑️</button>
                         </div>
                     </div>

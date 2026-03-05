@@ -182,3 +182,33 @@ assignment-2/
 ├── index.html              # NEW - Main HTML using TypeScript compiled JS
 └── AI_USAGE_LOG.md        # Updated - Added this entry
 ```
+
+---
+
+## Recent Updates (March 2026)
+
+### Button Functionality Fix
+
+**Issue**: Buttons in the task manager were not functional when clicking on them.
+
+**Root Causes Identified**:
+1. ES Module timing issue - inline onclick handlers may execute before module loads
+2. Edit button was passing task object directly in onclick which can fail with complex objects
+
+**Solutions Applied**:
+1. Updated index.html to properly initialize taskManager:
+   - Added explicit DOM ready check before initializing
+   - Ensured window.taskManager is set synchronously when module loads
+   - Prevents duplicate initialization
+
+2. Fixed edit button in taskManager.ts:
+   - Changed from passing task object to passing task ID
+   - Added new `openModalById(taskId)` method that looks up task by ID
+   - More reliable than passing object through inline onclick
+
+**Files Modified**:
+- `index.html` - Updated script module to handle initialization properly
+- `src/taskManager.ts` - Added openModalById method, updated edit button onclick
+- `dist/taskManager.js` - Recompiled with fixes
+
+**Status**: ✅ FIXED
